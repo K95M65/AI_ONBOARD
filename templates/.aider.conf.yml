@@ -1,0 +1,20 @@
+# Aider config — https://aider.chat/docs/config/aider_conf.html
+# Point Aider at the shared AGENTS.md so it onboards from the same source of truth.
+# Place this file at the project root (or ~/ for global defaults).
+
+# Load AGENTS.md as read-only context on every session.
+read:
+  - AGENTS.md
+
+# --- Optional extras (uncomment as needed) -------------------------------
+
+# Default model:
+# model: sonnet
+
+# Auto-run lint/test after edits (use your project's real commands):
+# lint-cmd: "npm run lint"
+# test-cmd: "npm test"
+# auto-test: false
+
+# Use conventional commit messages Aider generates:
+# auto-commits: true
