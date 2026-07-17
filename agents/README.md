@@ -30,13 +30,24 @@ The `model:` values are **recommendations that demonstrate the principle**, not 
 the mechanical `verifier`, a strong model for the `security-review` lens, `inherit` (use the session model)
 elsewhere. Tune them per your layer profiles.
 
+## Install
+
+```bash
+# Claude Code — these .md files ARE the drop-in format
+mkdir -p .claude/agents && cp agents/*.md .claude/agents/
+
+# Codex — ready-made .toml versions live in codex/
+mkdir -p .codex/agents && cp agents/codex/*.toml .codex/agents/
+```
+
 ## Realizing them per tool
 
-- **Claude Code** — copy into `.claude/agents/`. Frontmatter works as-is. See
-  [`../docs/setup/claude-code.md`](../docs/setup/claude-code.md#realizing-layer-profiles).
-- **Codex** — Codex has its own named-subagent system: drop each role into `.codex/agents/<name>.toml`,
-  mapping the portable body to `developer_instructions`. See
-  [`../docs/setup/codex.md`](../docs/setup/codex.md#realizing-subagents--layer-profiles).
+- **Claude Code** — the `*.md` files here *are* the format; copy into `.claude/agents/`, frontmatter works
+  as-is. See [`../docs/setup/claude-code.md`](../docs/setup/claude-code.md#realizing-layer-profiles).
+- **Codex** — ready-to-use `.toml` versions ship in [`codex/`](codex/) (the body maps to
+  `developer_instructions`). See
+  [`../docs/setup/codex.md`](../docs/setup/codex.md#realizing-subagents--layer-profiles) and
+  [`codex/README.md`](codex/README.md).
 
 Cross-cutting agents (`security-review`, `design-review`) run over the **diff**, across every path layer —
 they are reviewers, not directories. Keep their always-on rules (e.g. "never log secrets") in the **root**

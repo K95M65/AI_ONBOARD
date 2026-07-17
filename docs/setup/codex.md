@@ -79,21 +79,18 @@ alongside built-in `default`, `worker`, and `explorer` agents. The repo's
 
 ### Reference subagents → `.codex/agents/*.toml`
 
+The repo ships **ready-made `.toml` files** in [`agents/codex/`](../../agents/codex/) — copy them straight in,
+no translation needed:
+
+```bash
+mkdir -p .codex/agents && cp agents/codex/*.toml .codex/agents/
+```
+
 Each agent's portable body (the role contract) becomes `developer_instructions`. Required keys: `name`,
 `description`, `developer_instructions`. Optional: `model`, `model_reasoning_effort`, `sandbox_mode`,
-`mcp_servers`, `skills.config`.
-
-```toml
-# .codex/agents/reviewer.toml
-name = "reviewer"
-description = "Adversarial review of a diff. Use after implementation; never the author."
-model = "gpt-5-codex"
-sandbox_mode = "read-only"          # reviewers don't write
-developer_instructions = """
-You are an adversarial reviewer. You did not write this code...
-# (paste the body of agents/reviewer.md here)
-"""
-```
+`mcp_servers`, `skills.config`. Model *tier* is expressed with `model_reasoning_effort` (portable across
+versions) rather than a version-specific model name — see
+[`agents/codex/README.md`](../../agents/codex/README.md).
 
 Delegate by asking Codex to spawn it in-session; inspect running threads with `/agent` and `/subagents`.
 Headless equivalent:
