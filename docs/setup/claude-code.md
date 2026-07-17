@@ -111,6 +111,45 @@ Drop portable skills from this repo's [`skills/`](../../skills/) into `.claude/s
 
 Add via `claude mcp add <name> …` or a project `.mcp.json`. Keep MCP config here, not in `AGENTS.md`.
 
+## Realizing layer profiles
+
+[`docs/delegation.md`](../delegation.md) describes **layer profiles** — pinning `{model, skills, conventions,
+checks}` to a slice of the codebase. The *declaration* is portable (a nested `AGENTS.md`); here's how Claude
+Code *realizes* the tool-specific half.
+
+**Conventions, path-scoped** — `.claude/rules/` with `paths:` frontmatter loads a rule only when Claude
+touches matching files, so a layer's house rules don't cost context elsewhere:
+
+```markdown
+---
+paths: ["web/**"]
+---
+Frontend: use design tokens, never hard-coded hex. Match existing component patterns.
+```
+
+(The portable equivalent is a nested `web/AGENTS.md` — use that for cross-tool repos, `.claude/rules/` when
+you want Claude-only, path-triggered loading.)
+
+**Model + tools, per function** — a subagent's frontmatter pins the model for that role. Pair a fast model
+with a high-volume layer, a strong model with a risky one:
+
+```markdown
+---
+name: ui-executor
+description: Implements frontend changes under web/. Use for component and styling work.
+model: haiku
+tools: Read, Edit, Bash
+---
+Implement the change using design tokens. Run `npm run test:web` and compare a screenshot before finishing.
+```
+
+**Cross-cutting layers (Security, Design)** are reviewers, not directories — define them as `review`-function
+subagents (e.g. a `security-review` and a `design-review` agent) that run over the diff regardless of which
+path layer changed. Keep their always-on rules in the root `AGENTS.md`.
+
+**Skills** — surface a layer's skills by dropping them in `.claude/skills/`; scope which ones are active with
+the `gsd-surface` skill or per-subagent `tools`/prompt.
+
 ## Recommended baseline
 
 ```bash

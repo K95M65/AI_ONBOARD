@@ -5,6 +5,7 @@ Drop-in starter files. Copy what you need into a project root.
 | File | For | What it does |
 |------|-----|--------------|
 | [`CLAUDE.md`](CLAUDE.md) | Claude Code | One-line `@AGENTS.md` import + room for Claude-only notes |
+| [`AGENTS.layer.md`](AGENTS.layer.md) | All tools | Nested layer-profile starter — drop in a subdir (`web/`, `api/`…) as `AGENTS.md` |
 | [`.aider.conf.yml`](.aider.conf.yml) | Aider | Points Aider at `AGENTS.md` as read-only context |
 | [`link.sh`](link.sh) | All tools | Auto-wires every tool's config file to your `AGENTS.md` |
 

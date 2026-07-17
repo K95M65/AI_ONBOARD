@@ -41,6 +41,7 @@ Run these before considering a task done. Agents: **always run the checks releva
 - **Verify, then claim.** Run the checks relevant to what you changed (above) and show the evidence — the command and its output — instead of asserting success. If you can't verify it, say so; don't ship it.
 - **Fix causes, not symptoms.** Don't suppress an error or weaken a check just to make it pass.
 - **Match the surroundings.** Follow the conventions below and the style of nearby code; prefer editing existing files over adding new ones.
+- **Delegate deliberately.** Split work off to a subagent only for context isolation, parallelism, or an independent lens (e.g. adversarial review) — not to mirror a team org chart. Layer-specific rules live in the nearest `AGENTS.md`. See [`docs/delegation.md`](docs/delegation.md).
 - **Report honestly.** If tests fail, a step was skipped, or you got blocked, say so plainly with the details.
 
 ## Project structure
