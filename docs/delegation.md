@@ -41,6 +41,9 @@ Split subagents by function. Each task type maps to a delegation shape:
 
 If none of the three applies, don't delegate — just do it.
 
+Starter definitions for these roles ship in [`../agents/`](../agents/) — portable subagent contracts you drop
+into `.claude/agents/` (Claude Code) or `.codex/agents/` (Codex).
+
 ---
 
 ## Axis 2 — Layers (profiles that specialize the work)
