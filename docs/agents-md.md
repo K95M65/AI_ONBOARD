@@ -22,6 +22,7 @@ guidance:
 | **Setup** | The exact commands from clone → running. Saves the agent from guessing package managers. |
 | **Build / test / lint** | So the agent can verify its own work. Include the *single-test* command. |
 | **Structure** | A map of key directories so it doesn't have to spelunk. |
+| **How to work** | The behavioral contract — verify-then-claim, persist-within-scope. Ships as-is; see [agent-behavior.md](agent-behavior.md). |
 | **Conventions** | Naming, imports, formatting, test patterns — the house style. |
 | **Do / don't** | Guardrails: what's off-limits, what's generated, what needs human sign-off. |
 | **Gotchas** | Flaky tests, slow builds, required services — the tribal knowledge. |

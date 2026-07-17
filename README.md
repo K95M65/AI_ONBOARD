@@ -31,6 +31,7 @@ Codex, Claude Code, opencode, Cursor, Gemini CLI, Aider, Windsurf and friends ea
 | [`AGENTS.md`](AGENTS.md) | The universal agent-instructions template — your source of truth |
 | [`docs/tool-matrix.md`](docs/tool-matrix.md) | Which config file *each* AI tool actually reads (start here) |
 | [`docs/agents-md.md`](docs/agents-md.md) | The `AGENTS.md` format, sections, and precedence rules |
+| [`docs/agent-behavior.md`](docs/agent-behavior.md) | The behavioral contract — how agents should work, with OpenAI/Anthropic citations |
 | [`docs/skills.md`](docs/skills.md) | The Agent Skills format (`SKILL.md`) and how to author portable skills |
 | `docs/setup/` | Per-tool setup guides *(coming next)* |
 | `skills/` | A library of reusable, portable skills *(coming next)* |

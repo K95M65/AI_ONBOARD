@@ -29,6 +29,20 @@ Run these before considering a task done. Agents: **always run the checks releva
 [npm run lint]       # [lint + format check]
 ```
 
+## How to work
+
+> Unlike the rest of this file, this section is **not** project-specific — it's the default working
+> style we ask every agent to follow, distilled from OpenAI's and Anthropic's published guidance. Keep it
+> as-is unless you have a reason to change it. Rationale and sources: [`docs/agent-behavior.md`](docs/agent-behavior.md).
+
+- **Understand before you change.** Read the relevant code and confirm how it works before editing. If you're unsure what a file contains or how something is structured, open it — don't guess.
+- **Plan when it's non-trivial.** If you can describe the change in one sentence, just make it. Otherwise outline the steps first, especially for multi-file or unfamiliar work.
+- **Be persistent within scope.** See the task through to a working, verified result before handing back — don't stop at "should work." But check in *first* before expanding scope beyond what was asked, and before anything irreversible (data loss, deploys, force-push, deleting files you didn't create).
+- **Verify, then claim.** Run the checks relevant to what you changed (above) and show the evidence — the command and its output — instead of asserting success. If you can't verify it, say so; don't ship it.
+- **Fix causes, not symptoms.** Don't suppress an error or weaken a check just to make it pass.
+- **Match the surroundings.** Follow the conventions below and the style of nearby code; prefer editing existing files over adding new ones.
+- **Report honestly.** If tests fail, a step was skipped, or you got blocked, say so plainly with the details.
+
 ## Project structure
 
 - `[src/]` — [what lives here]
