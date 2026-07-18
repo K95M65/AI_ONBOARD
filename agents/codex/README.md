@@ -3,11 +3,16 @@
 The Codex realization of the [reference subagents](../README.md) — ready-to-use `.codex/agents/*.toml` files.
 Copy them in and Codex can delegate to them by name:
 
+[Explore how the roles enter a request workflow](https://k95m65.github.io/AI_ONBOARD/#router).
+
 ```bash
 mkdir -p .codex/agents
 cp agents/codex/*.toml .codex/agents/      # project-scoped
 # or ~/.codex/agents/ for all your projects
 ```
+
+For ownership tracking, upgrades, and uninstall, use the
+[managed installer](../../docs/install-management.md) with `--harness codex --agents`.
 
 ## Why these are hand-written, not generated
 
@@ -15,15 +20,16 @@ Each `.toml` here mirrors the matching `../<name>.md` (the Claude Code / canonic
 formats don't map 1:1, so there's no auto-converter:
 
 - **Instructions** — the Markdown body becomes `developer_instructions` (verbatim).
-- **Model tier** — Claude's `model: haiku|opus|inherit` has no equivalent Codex name (`gpt-5-codex` etc. are
-  version-specific). We express the *tier* with `model_reasoning_effort` (`low` for the mechanical
+- **Model tier** — provider model names change over time, so the ports inherit the active model. We express
+  the *tier* with `model_reasoning_effort` (`low` for the mechanical
   `verifier`, `high` for the `security-review` lens) instead, which is portable across versions. Add an
   explicit `model = "..."` if you want to pin one.
 - **Tools** — Claude's `tools:` list becomes a `sandbox_mode` (all these roles are read-only, except
   `verifier`, which needs `workspace-write` to run tests).
 
 **If you edit a role, change both files.** The `../<name>.md` body is the source of truth; keep the
-`developer_instructions` here in sync with it.
+`developer_instructions` here in sync with it, update the nearest README when behavior changes, and run
+`python3 scripts/sync_project_docs.py` from the repository root.
 
 ## Version caveats
 

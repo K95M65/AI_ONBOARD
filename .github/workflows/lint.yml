@@ -42,3 +42,26 @@ jobs:
           print("ok" if not bad else f"{bad} failures")
           sys.exit(1 if bad else 0)
           PY
+
+  validate-site-and-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check generated documentation
+        run: python3 scripts/sync_project_docs.py --check
+      - name: Validate portable skills
+        run: python3 scripts/check_skills.py
+      - name: Validate harness configurations
+        run: python3 scripts/check_harness_configs.py
+      - name: Test managed installation lifecycle
+        run: python3 -m unittest -v tests/test_ai_onboard.py
+      - name: Validate static site
+        run: |
+          python3 scripts/check_site.py
+          node --check site/app.js

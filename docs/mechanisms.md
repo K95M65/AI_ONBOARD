@@ -72,6 +72,16 @@ These aren't exclusive — the stack works *because* they layer:
 - So a task can flow: driver reads `AGENTS.md` → delegates review to a **subagent** → which pulls in a
   **skill** to do the check.
 
+Two manually invoked workflow-foundation skills can precede that flow when the user explicitly asks:
+
+- `grill-requirements` resolves consequential ambiguity only when the user explicitly requests an
+  interview.
+- `goal-contract` turns explicit goal intent into measurable completion evidence and hands state to the
+  harness's native goal mechanism when one exists.
+
+They are original AI_ONBOARD compatibility workflows, not new always-on mechanisms. See
+[`workflow-foundations.md`](workflow-foundations.md).
+
 ## Smell tests (anti-patterns)
 
 - **A procedure copy-pasted into every project's `AGENTS.md`** → make it a skill.

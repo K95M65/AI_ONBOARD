@@ -3,6 +3,9 @@
 Worked, read-top-to-bottom references showing how the pieces in this repo fit together in a real project.
 These are **config, not runnable app source** — the point is the wiring.
 
+[Use the interactive request router](https://k95m65.github.io/AI_ONBOARD/#router) for a visual version of
+the same context → skills → independent review → evidence sequence.
+
 Two **shapes**, to show the model isn't web-specific — the same framework flexes to fit the project:
 
 | Example | Shape | Layers | Design lens? |
@@ -57,3 +60,6 @@ Codex**. It's the *contrast* to `notes-app` — a different shape, so different 
 What changed vs `notes-app`: layers are split by **concern** (interface vs logic), not by web tier; the
 **`design-review`** subagent and the frontend skills drop out; **`security-review`** stays (path traversal,
 untrusted args). Same framework, different shape.
+
+When examples change the demonstrated operating model, update this index and the matching website workflow
+in the same change.

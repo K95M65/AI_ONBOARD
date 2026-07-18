@@ -20,13 +20,25 @@ DEST="$FOLDER/$SLUG.md"
 mkdir -p "$FOLDER"
 [ -e "$DEST" ] && { echo "Refusing to overwrite $DEST" >&2; exit 1; }
 
+yaml_quote() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\t'/\\t}"
+  printf '"%s"' "$value"
+}
+
 {
   echo "---"
-  echo "title: $TITLE"
-  echo "date: $DATE"
+  printf 'title: '; yaml_quote "$TITLE"; echo
+  printf 'date: '; yaml_quote "$DATE"; echo
   if [ "$#" -ge 1 ]; then
     echo "tags:"
-    for t in "$@"; do echo "  - ${t#\#}"; done
+    for t in "$@"; do
+      printf '  - '; yaml_quote "${t#\#}"; echo
+    done
   fi
   echo "---"
   echo

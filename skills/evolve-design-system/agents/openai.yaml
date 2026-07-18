@@ -1,0 +1,4 @@
+interface:
+  display_name: "Evolve a Design System"
+  short_description: "Audit and govern design-system evolution"
+  default_prompt: "Use $evolve-design-system to audit this design system and plan a safe evolution."

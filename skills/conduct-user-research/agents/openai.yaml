@@ -1,0 +1,4 @@
+interface:
+  display_name: "Conduct User Research"
+  short_description: "Plan, run, and synthesize user research"
+  default_prompt: "Use $conduct-user-research to plan and synthesize research for this product question."

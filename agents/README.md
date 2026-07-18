@@ -1,9 +1,15 @@
 # Reference subagents
 
 A small, portable starter set of subagents that realize the **function axis** of
-[`../docs/delegation.md`](../docs/delegation.md): research, review, and verify — plus the two cross-cutting
-review lenses (**security**, **design**). These are the roles where delegation actually pays off — context
+[`../docs/delegation.md`](../docs/delegation.md): research, review, and verify — plus the cross-cutting
+review lenses (**security**, **design**, **accessibility**). These are the roles where delegation actually pays off — context
 isolation, parallelism, or an independent lens — not an org chart.
+
+[See these roles in the interactive request flow](https://k95m65.github.io/AI_ONBOARD/#router).
+
+<!-- generated:agents-inventory:start -->
+**6 reference subagents · research, review, verification, security, design, and accessibility.**
+<!-- generated:agents-inventory:end -->
 
 ## Why there's no `developer` agent
 
@@ -40,6 +46,7 @@ reintroduce the org-chart split this model rejects. If you need it, add one mini
 | [`verifier`](verifier.md) | verify | independent lens / isolation | ✅ |
 | [`security-review`](security-review.md) | review · cross-cutting | independent lens | ✅ |
 | [`design-review`](design-review.md) | review · cross-cutting | independent lens | ✅ |
+| [`accessibility-review`](accessibility-review.md) | review · cross-cutting | independent lens | ✅ |
 
 ## Format & portability
 
@@ -62,10 +69,23 @@ mkdir -p .claude/agents && cp agents/*.md .claude/agents/ && rm .claude/agents/R
 mkdir -p .codex/agents && cp agents/codex/*.toml .codex/agents/
 
 # opencode — ported .md versions live in opencode/
-mkdir -p .opencode/agent && cp agents/opencode/*.md .opencode/agent/
+mkdir -p .opencode/agents && cp agents/opencode/*.md .opencode/agents/
 ```
 
-Or let [`../templates/link.sh`](../templates/link.sh) `--agents` do all three (it skips each README).
+For a managed installation across selected harnesses, use
+[`scripts/ai_onboard.py`](../scripts/ai_onboard.py) with `--agents`; it records ownership and supports safe
+upgrade and uninstall:
+
+```bash
+python3 /path/to/AI_ONBOARD/scripts/ai_onboard.py \
+  --target /path/to/project \
+  install \
+  --harness claude,codex,opencode \
+  --profile core \
+  --agents
+```
+
+[`../templates/link.sh`](../templates/link.sh) `--agents` remains a legacy copy path.
 
 ## Realizing them per tool
 
@@ -80,7 +100,12 @@ Or let [`../templates/link.sh`](../templates/link.sh) `--agents` do all three (i
   [`../docs/setup/opencode.md`](../docs/setup/opencode.md#realizing-subagents--skills) and
   [`opencode/README.md`](opencode/README.md).
 
-Cross-cutting agents (`security-review`, `design-review`) run over the **diff**, across every path layer —
-they are reviewers, not directories. Keep their always-on rules (e.g. "never log secrets") in the **root**
-`AGENTS.md`. For a whole-codebase security pass (not a diff), `security-review` invokes the
+Cross-cutting agents (`security-review`, `design-review`, `accessibility-review`) run over the **diff**,
+across every path layer — they are reviewers, not directories. Keep their always-on rules (e.g. "never log
+secrets") in the **root** `AGENTS.md`. For a whole-codebase security pass (not a diff), `security-review` invokes the
 [`security-audit`](../skills/security-audit/) skill — see [`../docs/security-audit.md`](../docs/security-audit.md).
+For a whole product or application accessibility pass, use the `audit-accessibility` skill; delegate the
+independent lens when author/reviewer separation matters.
+
+After adding or changing canonical agent frontmatter, run `python3 scripts/sync_project_docs.py` from the
+repository root so the website catalog and synchronized inventory remain current.

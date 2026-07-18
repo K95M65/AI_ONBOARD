@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#f2efe5"/>
+  <path d="M0 80h1200M0 160h1200M0 240h1200M0 320h1200M0 400h1200M0 480h1200M0 560h1200M120 0v630M240 0v630M360 0v630M480 0v630M600 0v630M720 0v630M840 0v630M960 0v630M1080 0v630" stroke="#171914" stroke-opacity=".08"/>
+  <rect x="76" y="64" width="128" height="52" rx="4" fill="#171914"/>
+  <text x="140" y="98" text-anchor="middle" font-family="monospace" font-size="22" fill="#c7ff45">A/O</text>
+  <text x="76" y="228" font-family="Arial, sans-serif" font-weight="700" font-size="76" fill="#171914">ONE REQUEST.</text>
+  <rect x="70" y="252" width="815" height="96" rx="4" fill="#c7ff45"/>
+  <text x="76" y="326" font-family="Arial, sans-serif" font-weight="700" font-size="76" fill="#171914">THE RIGHT CONTEXT.</text>
+  <text x="76" y="426" font-family="Arial, sans-serif" font-weight="700" font-size="76" fill="#171914">A VERIFIED RESULT.</text>
+  <path d="M80 520h930" stroke="#171914" stroke-width="4"/>
+  <circle cx="1040" cy="520" r="18" fill="#ff6b35"/>
+  <text x="76" y="574" font-family="monospace" font-size="25" fill="#171914">@RSTHRIVES PORTABLE AGENT WORKFLOW FRAMEWORK / AI_ONBOARD</text>
+</svg>

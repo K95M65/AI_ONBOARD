@@ -1,0 +1,4 @@
+interface:
+  display_name: "Audit Accessibility"
+  short_description: "Find, prioritize, and remediate access barriers"
+  default_prompt: "Use $audit-accessibility to assess this experience and produce a verified remediation plan."

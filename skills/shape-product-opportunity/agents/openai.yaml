@@ -1,0 +1,4 @@
+interface:
+  display_name: "Shape Product Opportunity"
+  short_description: "Turn outcomes and evidence into testable bets"
+  default_prompt: "Use $shape-product-opportunity to turn this product goal into evidence-backed opportunities and experiments."

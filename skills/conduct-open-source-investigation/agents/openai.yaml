@@ -1,0 +1,4 @@
+interface:
+  display_name: "Open-Source Investigation"
+  short_description: "Conduct lawful, evidence-led public-source research"
+  default_prompt: "Use $conduct-open-source-investigation to plan and conduct a lawful public-source investigation with verifiable evidence."

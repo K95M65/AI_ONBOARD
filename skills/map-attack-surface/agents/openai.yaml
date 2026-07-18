@@ -1,0 +1,4 @@
+interface:
+  display_name: "Map Attack Surface"
+  short_description: "Map internal and external attack surfaces"
+  default_prompt: "Use $map-attack-surface to produce an evidence-backed map of this system's internal and external attack surface."

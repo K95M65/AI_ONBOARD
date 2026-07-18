@@ -1,0 +1,4 @@
+interface:
+  display_name: "Obsidian"
+  short_description: "Create and connect local Markdown knowledge"
+  default_prompt: "Use $obsidian to organize these notes in my vault with durable links and minimal metadata."

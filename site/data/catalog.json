@@ -1,0 +1,542 @@
+{
+  "repository": "K95M65/AI_ONBOARD",
+  "counts": {
+    "skills": 67,
+    "agents": 6,
+    "categories": 7,
+    "mechanisms": 3
+  },
+  "categories": [
+    {
+      "name": "Manual workflow foundations",
+      "count": 2
+    },
+    {
+      "name": "Product & experience",
+      "count": 10
+    },
+    {
+      "name": "Apple engineering",
+      "count": 11
+    },
+    {
+      "name": "Security & trust",
+      "count": 13
+    },
+    {
+      "name": "Cloudflare platform",
+      "count": 8
+    },
+    {
+      "name": "Engineering & delivery",
+      "count": 14
+    },
+    {
+      "name": "Research & communication",
+      "count": 9
+    }
+  ],
+  "skills": [
+    {
+      "name": "agents-md-init",
+      "description": "Bootstraps an AGENTS.md file for a project by detecting its stack, package manager, and build/test/lint commands. Use when a repo has no AGENTS.md (or CLAUDE.md) yet and the user wants to onboard AI tools, or asks to create/generate agent instructions for the project.",
+      "category": "Engineering & delivery",
+      "kind": "specialist",
+      "path": "skills/agents-md-init/SKILL.md"
+    },
+    {
+      "name": "analytical-frameworks",
+      "description": "Apply structured business-analysis frameworks (SWOT, Porter's Five Forces, value chain, BCG, Jobs-to-be-Done, PESTEL) to turn market data into insight. Use when analyzing competitive position, market attractiveness, or strategic options.",
+      "category": "Research & communication",
+      "kind": "specialist",
+      "path": "skills/analytical-frameworks/SKILL.md"
+    },
+    {
+      "name": "appkit-accessibility-auditor",
+      "description": "Audits macOS AppKit interfaces for VoiceOver, keyboard navigation, focus order, and semantic structure issues. Use when reviewing or fixing AppKit accessibility — returns P0/P1/P2 findings with patch-ready fixes and manual verification steps.",
+      "category": "Apple engineering",
+      "kind": "specialist",
+      "path": "skills/appkit-accessibility-auditor/SKILL.md"
+    },
+    {
+      "name": "assess-security-controls",
+      "description": "Evaluates security controls for an organization, system, product, or process against a selected current framework using scoped requirements, traceable evidence, design and operating-effectiveness tests, gap ratings, and an improvement plan. Use for security control reviews, readiness assessments, customer or board assurance, NIST CSF or OWASP ASVS/SAMM baselines, and evidence-based program assessments. It does not certify compliance, provide a legal opinion, or substitute checklist completion for tested evidence.",
+      "category": "Security & trust",
+      "kind": "specialist",
+      "path": "skills/assess-security-controls/SKILL.md"
+    },
+    {
+      "name": "audit-accessibility",
+      "description": "Audits and remediates accessibility barriers across web, desktop, and mobile products, including interaction, assistive technology, visual presentation, motion, cognitive load, content, localization, and platform conventions. Use when reviewing an experience for accessibility, investigating an access failure, preparing remediation, or verifying that accessibility defects were fixed.",
+      "category": "Product & experience",
+      "kind": "specialist",
+      "path": "skills/audit-accessibility/SKILL.md"
+    },
+    {
+      "name": "automated-security-review",
+      "description": "Wire automated security scanning into CI so every pull request is scanned for vulnerable dependencies, committed secrets, and code weaknesses. Use when setting up or improving a project's security gates in GitHub Actions.",
+      "category": "Security & trust",
+      "kind": "specialist",
+      "path": "skills/automated-security-review/SKILL.md"
+    },
+    {
+      "name": "changelog",
+      "description": "Assemble release notes / a CHANGELOG entry from Conventional Commits since the last tag. Use when cutting a release or updating CHANGELOG.md. Pairs with the conventional-commit skill.",
+      "category": "Engineering & delivery",
+      "kind": "specialist",
+      "path": "skills/changelog/SKILL.md"
+    },
+    {
+      "name": "agents-sdk",
+      "description": "Build AI agents on Cloudflare Workers using the Agents SDK. Load when creating stateful agents, durable workflows, real-time WebSocket apps, scheduled tasks, MCP servers, chat applications, voice agents, or browser automation. Covers Agent class, state management, callable RPC, Workflows, durable execution, queues, retries, observability, and React hooks. Biases towards retrieval from Cloudflare docs over pre-trained knowledge.",
+      "category": "Cloudflare platform",
+      "kind": "specialist",
+      "path": "skills/cloudflare/agents-sdk/SKILL.md"
+    },
+    {
+      "name": "cloudflare-email-service",
+      "description": "Send and receive transactional emails with Cloudflare Email Service (Email Sending + Email Routing). Use when building email sending (Workers binding or REST API), email routing, Agents SDK email handling, or integrating email into any app — Workers, Node.js, Python, Go, etc. Also use for email deliverability, SPF/DKIM/DMARC, wrangler email setup, MCP email tools, or when a coding agent needs to send emails. Even for simple requests like \"add email to my Worker\" — this skill has critical config details.",
+      "category": "Cloudflare platform",
+      "kind": "specialist",
+      "path": "skills/cloudflare/cloudflare-email-service/SKILL.md"
+    },
+    {
+      "name": "cloudflare-one",
+      "description": "Guides Cloudflare One Zero Trust and SASE work across Access, Gateway, WARP, Tunnel, Cloudflare WAN, DLP, CASB, device posture, and identity. Use when designing, configuring, troubleshooting, or reviewing Cloudflare One deployments. Retrieval-first: use current Cloudflare docs/API schemas instead of embedded product docs.",
+      "category": "Cloudflare platform",
+      "kind": "specialist",
+      "path": "skills/cloudflare/cloudflare-one/SKILL.md"
+    },
+    {
+      "name": "durable-objects",
+      "description": "Create and review Cloudflare Durable Objects. Use when building stateful coordination (chat rooms, multiplayer games, booking systems), implementing RPC methods, SQLite storage, alarms, WebSockets, or reviewing DO code for best practices. Covers Workers integration, wrangler config, and testing with Vitest. Biases towards retrieval from Cloudflare docs over pre-trained knowledge.",
+      "category": "Cloudflare platform",
+      "kind": "specialist",
+      "path": "skills/cloudflare/durable-objects/SKILL.md"
+    },
+    {
+      "name": "sandbox-sdk",
+      "description": "Build sandboxed applications for secure code execution. Load when building AI code execution, code interpreters, CI/CD systems, interactive dev environments, or executing untrusted code. Covers Sandbox SDK lifecycle, commands, files, code interpreter, and preview URLs. Biases towards retrieval from Cloudflare docs over pre-trained knowledge.",
+      "category": "Cloudflare platform",
+      "kind": "specialist",
+      "path": "skills/cloudflare/sandbox-sdk/SKILL.md"
+    },
+    {
+      "name": "turnstile-spin",
+      "description": "Set up Cloudflare Turnstile end-to-end in a project. Scan the codebase, create the widget via the Cloudflare API, embed it on the right forms, wire canonical server-side siteverify in the customer's existing backend, validate, and persist the skill. Load this when a user asks to add Turnstile, set up CAPTCHA, protect a form from bots, or fix a Turnstile integration. Mirrors developers.cloudflare.com/turnstile/spin.",
+      "category": "Cloudflare platform",
+      "kind": "specialist",
+      "path": "skills/cloudflare/turnstile-spin/SKILL.md"
+    },
+    {
+      "name": "workers-best-practices",
+      "description": "Reviews and authors Cloudflare Workers code against production best practices. Load when writing new Workers, reviewing Worker code, configuring wrangler.jsonc, or checking for common Workers anti-patterns (streaming, floating promises, global state, secrets, bindings, observability). Biases towards retrieval from Cloudflare docs over pre-trained knowledge.",
+      "category": "Cloudflare platform",
+      "kind": "specialist",
+      "path": "skills/cloudflare/workers-best-practices/SKILL.md"
+    },
+    {
+      "name": "wrangler",
+      "description": "Cloudflare Workers CLI for deploying, developing, and managing Workers, KV, R2, D1, Vectorize, Hyperdrive, Workers AI, Containers, Queues, Workflows, Pipelines, and Secrets Store. Load before running wrangler commands to ensure correct syntax and best practices. Biases towards retrieval from Cloudflare docs over pre-trained knowledge.",
+      "category": "Cloudflare platform",
+      "kind": "orchestrator",
+      "path": "skills/cloudflare/wrangler/SKILL.md"
+    },
+    {
+      "name": "cobra-command",
+      "description": "Scaffolds a new Cobra subcommand (command file + table-driven test) for a Go CLI. Use when adding a subcommand to a Cobra-based CLI and you want the standard thin-command layout without hand-copying boilerplate.",
+      "category": "Engineering & delivery",
+      "kind": "specialist",
+      "path": "skills/cobra-command/SKILL.md"
+    },
+    {
+      "name": "competitive-intel",
+      "description": "Run an ethical competitive-intelligence cycle — scope a question, gather market and competitor data, analyze it with structured frameworks, and communicate findings for a decision. Use when researching competitors, a market, or a strategic question. Coordinates the market-research, analytical-frameworks, and data-storytelling skills.",
+      "category": "Research & communication",
+      "kind": "specialist",
+      "path": "skills/competitive-intel/SKILL.md"
+    },
+    {
+      "name": "component-scaffold",
+      "description": "Scaffolds a new React/TypeScript UI component (component + test + index) from a consistent template. Use when creating a new frontend component and you want the standard file layout without hand-copying boilerplate.",
+      "category": "Engineering & delivery",
+      "kind": "specialist",
+      "path": "skills/component-scaffold/SKILL.md"
+    },
+    {
+      "name": "conduct-open-source-investigation",
+      "description": "Plans and conducts lawful, ethical open-source intelligence investigations using public sources and free or local tools, with evidence provenance, entity resolution, confidence grading, contradiction and gap analysis, and decision-ready reporting. Use for public-source research on organizations, domains, public events, a public figure's public activity, journalist fact-checking, defensive threat intelligence, or a consented or self-directed digital-footprint review. Do not use for market or competitor research when those skills fit, stalking, doxxing, real-time location, minors, private data, authentication bypass, paid data brokers, or regulated decisions about a person.",
+      "category": "Research & communication",
+      "kind": "orchestrator",
+      "path": "skills/conduct-open-source-investigation/SKILL.md"
+    },
+    {
+      "name": "conduct-user-research",
+      "description": "Plans, conducts, and synthesizes ethical user research into decision-ready evidence. Use when investigating user needs, behaviors, workflows, pain points, mental models, or reactions to concepts and prototypes through interviews, contextual inquiry, diary studies, surveys, or usability testing.",
+      "category": "Product & experience",
+      "kind": "specialist",
+      "path": "skills/conduct-user-research/SKILL.md"
+    },
+    {
+      "name": "conventional-commit",
+      "description": "Writes a Conventional Commits message from the currently staged git changes. Use when the user asks to commit, wants a commit message drafted, or asks you to figure out the right commit type/scope for staged work.",
+      "category": "Engineering & delivery",
+      "kind": "specialist",
+      "path": "skills/conventional-commit/SKILL.md"
+    },
+    {
+      "name": "coordinate-data-views",
+      "description": "Designs and implements synchronized representations of the same data, such as table plus chart, list plus map, or records plus diagram or timeline. Use when users need to select, inspect, filter, or navigate the same entities across two complementary views in a web, desktop, or mobile product.",
+      "category": "Product & experience",
+      "kind": "specialist",
+      "path": "skills/coordinate-data-views/SKILL.md"
+    },
+    {
+      "name": "core-data-expert",
+      "description": "Guides Core Data work across iOS and macOS, including stack setup, fetches, saving, merge conflicts, concurrency, batch operations, persistent history, migrations, performance, and CloudKit sync. Use when implementing, reviewing, migrating, or debugging a project that already uses or deliberately selects Core Data.",
+      "category": "Apple engineering",
+      "kind": "specialist",
+      "path": "skills/core-data-expert/SKILL.md"
+    },
+    {
+      "name": "data-storytelling",
+      "description": "Turn analysis into a clear, persuasive narrative for a decision-maker — message hierarchy, executive structure, and honest communication. Use when presenting findings, writing a brief or memo, or building a deck from data. Pairs with dataviz.",
+      "category": "Research & communication",
+      "kind": "specialist",
+      "path": "skills/data-storytelling/SKILL.md"
+    },
+    {
+      "name": "dataviz",
+      "description": "Guidance for creating charts, graphs, and data visualizations that are correct, readable, and accessible. Use before writing any chart, plot, or dashboard, or when choosing chart types or colors.",
+      "category": "Research & communication",
+      "kind": "specialist",
+      "path": "skills/dataviz/SKILL.md"
+    },
+    {
+      "name": "debug-systematically",
+      "description": "Reproduces software failures, isolates causal conditions, tests competing hypotheses, and either reports the supported diagnosis or implements and verifies the smallest authorized root-cause fix. Use for diagnosis or repair when the cause of a bug, crash, flaky test, incorrect output, performance regression, race condition, integration failure, or environment-specific behavior is unknown; do not use for feature development or a known-cause change that the user explicitly wants implemented test-first.",
+      "category": "Engineering & delivery",
+      "kind": "specialist",
+      "path": "skills/debug-systematically/SKILL.md"
+    },
+    {
+      "name": "define-brand-foundation",
+      "description": "Defines an evidence-based brand foundation covering audience, category, positioning, promise, differentiation, proof, personality, voice, visual principles, architecture, and governance. Use when creating or refreshing a product or organization brand, aligning teams before identity or website work, documenting durable brand context, or evaluating whether expression matches strategy.",
+      "category": "Product & experience",
+      "kind": "specialist",
+      "path": "skills/define-brand-foundation/SKILL.md"
+    },
+    {
+      "name": "dependency-vuln-scan",
+      "description": "Scan a project's dependencies for known vulnerabilities (CVEs). Use when auditing a codebase's supply chain, gating a release, or triaging an unfamiliar project's dependencies. Supports npm/pnpm/yarn and Go, plus osv-scanner.",
+      "category": "Security & trust",
+      "kind": "specialist",
+      "path": "skills/dependency-vuln-scan/SKILL.md"
+    },
+    {
+      "name": "design-and-build-website",
+      "description": "Guides a strategy-to-launch workflow for conversion-oriented marketing websites. Use when creating or substantially redesigning a landing page, company website, portfolio, campaign site, or product-marketing experience and the task spans strategy, wireframes, conversion copy, visual direction, componentwise implementation, QA, review, and publishing.",
+      "category": "Product & experience",
+      "kind": "orchestrator",
+      "path": "skills/design-and-build-website/SKILL.md"
+    },
+    {
+      "name": "design-product-content",
+      "description": "Designs clear, consistent, accessible in-product language and content systems for navigation, actions, onboarding, instructions, forms, validation, errors, empty states, notifications, help, and localization. Use when creating or revising interface copy, terminology, voice and tone in a product workflow, or content patterns across a product or design system.",
+      "category": "Product & experience",
+      "kind": "specialist",
+      "path": "skills/design-product-content/SKILL.md"
+    },
+    {
+      "name": "design-product-interface",
+      "description": "Guides a research-to-release workflow for interactive product interfaces across web applications, macOS, Windows and Linux desktop, iOS and Android, and cross-platform apps. Use when creating or substantially redesigning an application, dashboard, admin or operational tool, settings surface, or multi-step product workflow; use design-and-build-website instead for conversion-oriented marketing websites.",
+      "category": "Product & experience",
+      "kind": "orchestrator",
+      "path": "skills/design-product-interface/SKILL.md"
+    },
+    {
+      "name": "develop-apple-platform-app",
+      "description": "Implements and reviews Swift applications for Apple platforms, with special coverage for macOS, using the repository's real Xcode or SwiftPM configuration. Use when building, changing, debugging, testing, profiling, packaging, signing, or distributing a SwiftUI, AppKit, UIKit, mixed-framework, SwiftData, or Core Data application; do not use it for product-interface strategy alone.",
+      "category": "Apple engineering",
+      "kind": "orchestrator",
+      "path": "skills/develop-apple-platform-app/SKILL.md"
+    },
+    {
+      "name": "develop-test-first",
+      "description": "Implements a known behavior change through a focused failing test, the smallest passing production change, and a verified refactor. Use when the user requests test-driven development, a known-cause regression-first bug fix, or new testable domain logic; do not use for unknown-cause diagnosis, behavior-preserving legacy characterization or refactoring, documentation-only work, generated artifacts, exploratory spikes, or UI polish whose value cannot be expressed as stable behavior.",
+      "category": "Engineering & delivery",
+      "kind": "specialist",
+      "path": "skills/develop-test-first/SKILL.md"
+    },
+    {
+      "name": "evolve-design-system",
+      "description": "Audits and evolves an existing design system through reusable foundations, component contracts, documentation, governance, adoption, versioning, and migration. Use when consolidating inconsistent UI patterns, introducing or changing tokens and components, planning cross-product adoption, deprecating patterns, or establishing a maintainable design-system operating model.",
+      "category": "Product & experience",
+      "kind": "specialist",
+      "path": "skills/evolve-design-system/SKILL.md"
+    },
+    {
+      "name": "gh-issue",
+      "description": "Create, triage, and manage GitHub issues with the gh CLI. Use when filing a bug or feature issue, triaging the backlog, or linking issues to PRs.",
+      "category": "Engineering & delivery",
+      "kind": "specialist",
+      "path": "skills/gh-issue/SKILL.md"
+    },
+    {
+      "name": "gh-pr",
+      "description": "Create or update a GitHub pull request with the gh CLI. Use when opening a PR from the current branch or updating an existing one. Pairs with the pr-description skill for the body.",
+      "category": "Engineering & delivery",
+      "kind": "specialist",
+      "path": "skills/gh-pr/SKILL.md"
+    },
+    {
+      "name": "gh-release",
+      "description": "Cut a GitHub release with the gh CLI, using changelog or auto-generated notes. Use when tagging and publishing a release. Pairs with the changelog skill.",
+      "category": "Engineering & delivery",
+      "kind": "specialist",
+      "path": "skills/gh-release/SKILL.md"
+    },
+    {
+      "name": "identity-management",
+      "description": "Design and review authentication and authorization — sessions, tokens (JWT), OAuth2/OIDC, RBAC/ABAC, MFA, and password handling. Use when building or auditing login, access control, or any \"who can do what\" logic.",
+      "category": "Security & trust",
+      "kind": "specialist",
+      "path": "skills/identity-management/SKILL.md"
+    },
+    {
+      "name": "input-sanitization",
+      "description": "Correctly validate untrusted input and encode output per sink to prevent injection (SQL, command, XSS, path, SSRF). Use when handling any external input — request bodies, query params, headers, CLI args, file contents, env vars — or when fixing an injection finding.",
+      "category": "Security & trust",
+      "kind": "specialist",
+      "path": "skills/input-sanitization/SKILL.md"
+    },
+    {
+      "name": "manage-vulnerability-risk",
+      "description": "Turns vulnerability findings from code, dependency, host, cloud, application, or external assessments into a normalized, risk-informed remediation program with ownership, due dates, exceptions, retesting, and coverage metrics. Use when triaging scanner exports or assessment findings, establishing vulnerability-management policy and SLAs, prioritizing beyond raw severity, tracking remediation, or reporting residual vulnerability risk. It does not perform exploitation or replace the scanners and audits that produce findings.",
+      "category": "Security & trust",
+      "kind": "specialist",
+      "path": "skills/manage-vulnerability-risk/SKILL.md"
+    },
+    {
+      "name": "map-attack-surface",
+      "description": "Maps an owned or explicitly authorized system's internal, external, or combined attack surface into an evidence-backed asset ledger, reachability model, and prioritized attack paths. Use when inventorying exposed assets, reconciling shadow IT, scoping a security assessment, understanding trust and privilege boundaries beyond one codebase, or establishing a baseline for continuous exposure management. Passive discovery is the default; active probing requires explicit targets and rules of engagement.",
+      "category": "Security & trust",
+      "kind": "orchestrator",
+      "path": "skills/map-attack-surface/SKILL.md"
+    },
+    {
+      "name": "market-research",
+      "description": "Gather and structure market and competitor data — market sizing (TAM/SAM/SOM), primary vs secondary sources, and source credibility. Use when researching a market, sizing an opportunity, or building a competitor profile.",
+      "category": "Research & communication",
+      "kind": "specialist",
+      "path": "skills/market-research/SKILL.md"
+    },
+    {
+      "name": "measure-product-experiments",
+      "description": "Defines trustworthy product measurement, event contracts, data-quality checks, and experiments tied to explicit decisions. Use when creating a measurement plan, selecting product metrics and guardrails, specifying analytics instrumentation, evaluating a rollout or product change, or designing an ethical randomized or quasi-experimental test.",
+      "category": "Product & experience",
+      "kind": "specialist",
+      "path": "skills/measure-product-experiments/SKILL.md"
+    },
+    {
+      "name": "obsidian",
+      "description": "Read and write notes in an Obsidian vault — markdown with wikilinks, tags, YAML frontmatter, daily notes, and folder conventions. Use when creating, linking, or organizing notes in an Obsidian vault, or building a note from a template.",
+      "category": "Research & communication",
+      "kind": "specialist",
+      "path": "skills/obsidian/SKILL.md"
+    },
+    {
+      "name": "pr-description",
+      "description": "Write a clear pull-request description from the branch's commits and diff. Use when opening a PR or when asked to summarize a branch's changes for review.",
+      "category": "Engineering & delivery",
+      "kind": "specialist",
+      "path": "skills/pr-description/SKILL.md"
+    },
+    {
+      "name": "preserve-web-evidence",
+      "description": "Preserves lawful public-web evidence with reproducible provenance using screenshots, PDFs, saved responses, WARC, or WACZ according to the required fidelity. Use when an authorized investigation, audit, research project, or change record needs durable source capture, replay, hashing, or a snapshot manifest; do not use for covert collection, private or authenticated content without explicit authority, or browser regression testing.",
+      "category": "Research & communication",
+      "kind": "specialist",
+      "path": "skills/preserve-web-evidence/SKILL.md"
+    },
+    {
+      "name": "prisma-migrate",
+      "description": "Safely create and apply a Prisma schema migration, guarding against running against a non-local database. Use when changing prisma/schema.prisma or adding/altering database tables, columns, indexes, or relations.",
+      "category": "Engineering & delivery",
+      "kind": "specialist",
+      "path": "skills/prisma-migrate/SKILL.md"
+    },
+    {
+      "name": "retrieve-technical-docs",
+      "description": "Retrieves version-matched, current technical documentation and release evidence for libraries, frameworks, APIs, protocols, and developer tools. Use when implementation depends on unstable or unfamiliar APIs, migration details, exact configuration, deprecations, or current best practices; do not use for general market research, product recommendations, or repository facts already available locally.",
+      "category": "Research & communication",
+      "kind": "specialist",
+      "path": "skills/retrieve-technical-docs/SKILL.md"
+    },
+    {
+      "name": "secret-management",
+      "description": "Store, inject, scope, and rotate secrets safely — API keys, tokens, DB credentials, signing keys. Use when adding a secret to a project, wiring secrets into an app or CI, or setting up rotation. Complements secret-scan (which detects leaked secrets).",
+      "category": "Security & trust",
+      "kind": "specialist",
+      "path": "skills/secret-management/SKILL.md"
+    },
+    {
+      "name": "secret-scan",
+      "description": "Scan a repository for committed secrets (API keys, tokens, private keys) including git history. Use when auditing a codebase for leaked credentials, before open-sourcing, or when reviewing an unfamiliar repo. Complements the security-audit surface scan, which only covers the current tree.",
+      "category": "Security & trust",
+      "kind": "specialist",
+      "path": "skills/secret-scan/SKILL.md"
+    },
+    {
+      "name": "secure-coding",
+      "description": "Practices for writing secure code — the defensive habits and per-category rules that prevent vulnerabilities before they ship. Use when implementing security-sensitive features (auth, input handling, data access, crypto) or as a checklist while reviewing them.",
+      "category": "Security & trust",
+      "kind": "specialist",
+      "path": "skills/secure-coding/SKILL.md"
+    },
+    {
+      "name": "security-audit",
+      "description": "Systematically audit a codebase or system for security vulnerabilities against a threat model. Use when reviewing a whole codebase or feature (your own pre-release code or an unfamiliar external/client project) for security issues — not a single diff.",
+      "category": "Security & trust",
+      "kind": "orchestrator",
+      "path": "skills/security-audit/SKILL.md"
+    },
+    {
+      "name": "shape-product-opportunity",
+      "description": "Turns a desired product outcome and available evidence into prioritized opportunities, explicit assumptions, and testable bets. Use when deciding what product problem to pursue, framing discovery, evaluating solution options, reducing product risk, or defining experiments before committing to delivery.",
+      "category": "Product & experience",
+      "kind": "specialist",
+      "path": "skills/shape-product-opportunity/SKILL.md"
+    },
+    {
+      "name": "simplify-code-safely",
+      "description": "Simplifies existing code while preserving externally observable behavior, public contracts, and required performance. Use when reducing accidental complexity, removing dead or duplicated logic, clarifying control flow, shrinking an over-engineered change, or performing a focused behavior-preserving refactor; do not use for feature development, architecture replacement, or read-only code review.",
+      "category": "Engineering & delivery",
+      "kind": "specialist",
+      "path": "skills/simplify-code-safely/SKILL.md"
+    },
+    {
+      "name": "swift-api-design-guidelines",
+      "description": "Write, review, or improve Swift APIs using Swift API Design Guidelines for naming, argument labels, documentation comments, terminology, and general conventions. Use when designing new APIs, refactoring existing interfaces, or reviewing API clarity and fluency while preserving source compatibility requirements.",
+      "category": "Apple engineering",
+      "kind": "specialist",
+      "path": "skills/swift-api-design-guidelines/SKILL.md"
+    },
+    {
+      "name": "swift-architecture",
+      "description": "Evaluate MVVM, MVI, TCA, Clean Architecture, VIPER, MVP, Coordinator, and reactive patterns for SwiftUI or UIKit codebases. Use when designing, refactoring, or reviewing architecture; preserve the project's existing conventions and recommend a pattern only when its tradeoffs fit the scope, team, dependencies, and deployment targets.",
+      "category": "Apple engineering",
+      "kind": "specialist",
+      "path": "skills/swift-architecture/SKILL.md"
+    },
+    {
+      "name": "swift-concurrency",
+      "description": "Diagnose Swift concurrency issues, refactor callback-based code to async/await, and guide migration when working with tasks, actors, @MainActor, Sendable, data races, thread safety, or concurrency diagnostics. Inspect the project's Swift version and enabled features before recommending version-specific APIs.",
+      "category": "Apple engineering",
+      "kind": "specialist",
+      "path": "skills/swift-concurrency/SKILL.md"
+    },
+    {
+      "name": "swift-testing-expert",
+      "description": "Guide Swift Testing structure, #expect and #require macros, traits, parameterized tests, test plans, parallel execution, async waiting, and XCTest migration. Use when writing or modernizing Swift tests, debugging flaky tests, or improving test quality in Apple-platform or server projects; inspect the project's Swift and platform targets first.",
+      "category": "Apple engineering",
+      "kind": "specialist",
+      "path": "skills/swift-testing-expert/SKILL.md"
+    },
+    {
+      "name": "swiftdata-expert",
+      "description": "Design, implement, migrate, and debug SwiftData persistence in Swift and SwiftUI apps. Use for @Model schemas, relationships and attributes, Query or FetchDescriptor access, ModelContainer and ModelContext configuration, CloudKit sync, migrations, history, ModelActor isolation, or evaluated Core Data coexistence; inspect deployment targets and the existing persistence architecture first.",
+      "category": "Apple engineering",
+      "kind": "specialist",
+      "path": "skills/swiftdata-expert/SKILL.md"
+    },
+    {
+      "name": "swiftui-accessibility-auditor",
+      "description": "Audits SwiftUI views on iOS, iPadOS, and macOS for VoiceOver, Dynamic Type, keyboard focus, and semantic structure issues. Use when reviewing or fixing SwiftUI accessibility — returns P0/P1/P2 findings with patch-ready fixes and manual verification steps.",
+      "category": "Apple engineering",
+      "kind": "specialist",
+      "path": "skills/swiftui-accessibility-auditor/SKILL.md"
+    },
+    {
+      "name": "swiftui-performance-audit",
+      "description": "Audit and improve SwiftUI runtime performance from code review and architecture. Use for requests to diagnose slow rendering, janky scrolling, high CPU/memory usage, excessive view updates, or layout thrash in SwiftUI apps, and to provide guidance for user-run Instruments profiling when code review alone is insufficient.",
+      "category": "Apple engineering",
+      "kind": "specialist",
+      "path": "skills/swiftui-performance-audit/SKILL.md"
+    },
+    {
+      "name": "swiftui-ui-patterns",
+      "description": "Apply example-driven SwiftUI patterns for views, components, navigation, state, modifiers, responsive layouts, settings, and menu-bar interfaces. Use when creating or refactoring SwiftUI interfaces across Apple platforms; preserve local conventions and gate every API by the project's deployment targets.",
+      "category": "Apple engineering",
+      "kind": "specialist",
+      "path": "skills/swiftui-ui-patterns/SKILL.md"
+    },
+    {
+      "name": "test-browser-workflows",
+      "description": "Designs and runs browser-based validation for websites and web applications, including critical user flows, responsive behavior, keyboard interaction, accessibility structure, visual regression, screenshots, and traces. Use when testing rendered browser behavior, adding or improving Playwright end-to-end tests, reproducing a UI failure, or collecting browser QA evidence; do not use for unit tests alone or for archival capture of public sources.",
+      "category": "Engineering & delivery",
+      "kind": "specialist",
+      "path": "skills/test-browser-workflows/SKILL.md"
+    },
+    {
+      "name": "threat-model",
+      "description": "Produce a threat model for a feature or system using STRIDE and a data-flow view. Use at design time before building something security-sensitive, or as the framing step of a security audit — to decide what's worth protecting before hunting for bugs.",
+      "category": "Security & trust",
+      "kind": "specialist",
+      "path": "skills/threat-model/SKILL.md"
+    },
+    {
+      "name": "vulnerability-hardening",
+      "description": "Harden an application or service against attack — defense-in-depth at the config, deploy, and runtime layer (security headers, TLS, least-privilege, safe defaults, attack-surface reduction). Use when hardening a deployment, reviewing infra/config security, or turning audit findings into systemic defenses.",
+      "category": "Security & trust",
+      "kind": "specialist",
+      "path": "skills/vulnerability-hardening/SKILL.md"
+    },
+    {
+      "name": "goal-contract",
+      "description": "Defines a concrete, measurable execution goal and, for activation requests, hands it to native goal state when the agent harness supports that capability. Use only when the user explicitly asks to create or run a goal, requests goal-backed or resumable work, or wants fuzzy intent converted into verified completion criteria; do not invoke for ordinary implementation tasks.",
+      "category": "Manual workflow foundations",
+      "kind": "foundation",
+      "path": "skills/workflow-foundations/goal-contract/SKILL.md"
+    },
+    {
+      "name": "grill-requirements",
+      "description": "Runs an explicit, repository-informed interview that pressure-tests a request, plan, or design one consequential decision at a time before implementation. Use only when the user asks to be grilled, interviewed, challenged, or wants assumptions and requirements stress-tested; do not invoke implicitly for routine ambiguity or ordinary clarifying questions.",
+      "category": "Manual workflow foundations",
+      "kind": "foundation",
+      "path": "skills/workflow-foundations/grill-requirements/SKILL.md"
+    }
+  ],
+  "agents": [
+    {
+      "name": "accessibility-review",
+      "description": "Independent platform-aware accessibility lens over UI and product-content changes across web, macOS, mobile, and desktop. Use when accessibility behavior is material, after accessibility remediation, or before release.",
+      "path": "agents/accessibility-review.md"
+    },
+    {
+      "name": "design-review",
+      "description": "Platform-aware design and UI review across web, macOS, mobile, and desktop changes — product fit, visual consistency, accessibility, adaptive behavior, interaction, and state coverage. Cross-cutting; use after any UI change.",
+      "path": "agents/design-review.md"
+    },
+    {
+      "name": "researcher",
+      "description": "Investigates a scoped question in an isolated context and returns a tight summary, not a raw dump. Use for unfamiliar code, \"how does X work\", or gathering context before planning.",
+      "path": "agents/researcher.md"
+    },
+    {
+      "name": "reviewer",
+      "description": "Adversarial review of a diff for correctness bugs and quality issues. Use after implementation — never let the author grade their own work.",
+      "path": "agents/reviewer.md"
+    },
+    {
+      "name": "security-review",
+      "description": "Security lens over a diff — authz, input validation, secrets, injection, data exposure. Runs across ALL layers, not one directory. Use on any change touching auth, data, or external input.",
+      "path": "agents/security-review.md"
+    },
+    {
+      "name": "verifier",
+      "description": "Runs the project's checks and confirms the change actually achieves its goal, returning evidence. Use before claiming a task done.",
+      "path": "agents/verifier.md"
+    }
+  ]
+}

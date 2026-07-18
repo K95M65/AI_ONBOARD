@@ -1,0 +1,4 @@
+interface:
+  display_name: "Measure Product Experiments"
+  short_description: "Plan trustworthy product measurement and tests"
+  default_prompt: "Use $measure-product-experiments to define metrics, instrumentation, and an experiment for this decision."

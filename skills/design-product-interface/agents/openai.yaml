@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design Product Interface"
+  short_description: "Cross-platform product interface workflow"
+  default_prompt: "Use $design-product-interface to design this product interface from user workflows through platform-aware implementation, validation, and release."

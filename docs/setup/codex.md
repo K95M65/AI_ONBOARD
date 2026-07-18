@@ -16,17 +16,19 @@ Codex layers these, weakest → strongest:
 Put personal preferences ("explain your plan before editing") in the global file; put project facts in the
 committed project file.
 
-## Power features (`~/.codex/config.toml`)
+## Configuration layers
 
-Codex's behavior — model, how much it can do without asking, sandboxing — lives in `~/.codex/config.toml`,
-not in `AGENTS.md`.
+Personal defaults live in `~/.codex/config.toml`. Trusted repositories can add shared runtime behavior in
+`.codex/config.toml`; closer project files override broader ones. Keep provider, credentials, personal
+model choice, approval mode, and UI preferences out of committed project configuration.
 
 ```toml
-# Default model & provider
-model = "gpt-5-codex"
+# Personal default example; use a model available to your account.
+model = "gpt-5.6"
+model_reasoning_effort = "high"
 
 # How much autonomy Codex has before asking you
-approval_policy = "on-request"   # untrusted | on-failure | on-request | never
+approval_policy = "on-request"   # untrusted | on-request | never | granular policy
 
 # Filesystem/network sandbox for commands Codex runs
 sandbox_mode = "workspace-write" # read-only | workspace-write | danger-full-access
@@ -42,23 +44,38 @@ sandbox_mode = "workspace-write" # read-only | workspace-write | danger-full-acc
 
 Only use `danger-full-access` in an already-isolated environment.
 
-### Profiles — named config bundles
+### Profiles — separate named config files
 
-Switch whole configs with `codex --profile <name>`:
+Codex 0.134.0 and later loads profiles from separate files under `$CODEX_HOME`. Do not use legacy inline
+`[profiles.<name>]` tables.
 
 ```toml
-[profiles.review]
-model = "gpt-5-codex"
+# ~/.codex/deep-review.config.toml
+model = "gpt-5.6"
+model_reasoning_effort = "xhigh"
 approval_policy = "on-request"
 sandbox_mode = "read-only"
-
-[profiles.ci]
-approval_policy = "never"
-sandbox_mode = "workspace-write"
 ```
 
-> Newer Codex may define profiles as separate `~/.codex/<name>.config.toml` files instead of inline
-> `[profiles.x]` tables — check your version (see the version caveats below).
+```bash
+codex --profile deep-review
+codex --profile deep-review exec "Review the staged diff."
+```
+
+Keep profile files small: they layer above user config and below trusted project config and CLI flags.
+
+### Minimal project configuration
+
+AI_ONBOARD's project template tunes delegation without pinning a provider or model:
+
+```toml
+[agents]
+max_threads = 4
+max_depth = 1
+```
+
+Stable feature flags should normally be omitted so Codex can use current defaults. Remove obsolete keys
+rather than carrying them forward; inspect the installed release with `codex features list`.
 
 ### MCP servers
 
@@ -96,7 +113,7 @@ Delegate by asking Codex to spawn it in-session; inspect running threads with `/
 Headless equivalent:
 
 ```bash
-codex exec --profile review --sandbox read-only "Review the staged diff for correctness bugs."
+codex --profile review exec --sandbox read-only "Review the staged diff for correctness bugs."
 ```
 
 ### Layer profiles — the one real gap vs Claude Code
@@ -116,23 +133,28 @@ two halves separately:
 `security-review` and `design-review` become subagents (or `codex exec` calls) run over the **diff** — not
 tied to a directory, same as everywhere else.
 
-> **Version caveats.** Profile *definition* has shifted across releases (older: inline `[profiles.<name>]`
-> tables; current docs: separate `~/.codex/<name>.config.toml` files). Per-subagent `model`/effort selection
-> had a reported regression around v5.6. Model names (`gpt-5-codex`, …) are illustrative. Check
-> `codex --version` and the live docs before relying on an example.
+GOAL and GRILL remain explicit-intent skills. Codex has native persisted goals, so `goal-contract` hands
+activation to that native mechanism instead of creating a parallel ledger. Codex does not currently expose
+Claude's per-skill `user-invocable-only` visibility setting; the skill trigger and native goal activation
+gate enforce the boundary.
 
 ## Recommended baseline
 
 ```bash
-# Project: AGENTS.md at root is auto-detected — done.
-# Personal: set sane defaults once
-mkdir -p ~/.codex
-cat > ~/.codex/config.toml <<'TOML'
-model = "gpt-5-codex"
-approval_policy = "on-request"
-sandbox_mode = "workspace-write"
-TOML
+python3 /path/to/AI_ONBOARD/scripts/ai_onboard.py \
+  --target /path/to/project \
+  install \
+  --harness codex \
+  --profile core \
+  --agents \
+  --configs
+
+# Personal defaults and named profile files stay under ~/.codex/.
+codex features list
 ```
 
-> Flag names and defaults have shifted across Codex releases — check `codex --help` and the current docs if
-> a key here is rejected.
+The manager leaves `AGENTS.md` in user control, installs the selected portable skills and Codex agent
+realizations, and merges only the bounded project config keys it owns. Use the installed manager for
+[`status`, upgrades, and cleanup](../install-management.md).
+
+Use `codex --version`, `codex features list`, and the current manual before changing unstable keys.

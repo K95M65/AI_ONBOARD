@@ -8,9 +8,18 @@ description: Read and write notes in an Obsidian vault — markdown with wikilin
 An Obsidian vault is just a folder of Markdown files — no lock-in, so work with the files directly. These are
 the conventions that keep a vault navigable.
 
-## When to use
+## Choose the integration level
 
-Creating, linking, or organizing notes in an Obsidian vault.
+1. **Direct files (default)** — read and edit Markdown in the vault with normal filesystem tools. This is
+   portable, local, and requires no account, plugin, Sync subscription, or API key.
+2. **Obsidian URI (optional)** — use the official `obsidian://` actions to open, create, append, or search
+   when launching the desktop app improves the workflow.
+3. **Local REST or MCP (optional)** — use an already-installed community integration when the user needs
+   active-file access, command execution, structured search, or surgical patches. Treat its local API key as
+   a secret and do not install or enable a plugin without permission.
+
+Do not require paid Obsidian Sync or Publish. Let the user's existing filesystem or synchronization method
+own cross-device transport.
 
 ## Conventions
 
@@ -40,3 +49,5 @@ Creates `<folder>/<Title>.md` with `title`/`date`/`tags` frontmatter, ready to f
 - When editing files directly, **update wikilinks yourself** (Obsidian's in-app rename updates backlinks; a
   raw file rename does not).
 - Keep filenames stable — a note's name *is* its link target.
+- When persisting technical research, include source URLs, the relevant software version, retrieval date,
+  and an invalidation condition. Compose with `retrieve-technical-docs` for that workflow.

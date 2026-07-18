@@ -1,0 +1,4 @@
+interface:
+  display_name: "Preserve Web Evidence"
+  short_description: "Capture reproducible web evidence and archives"
+  default_prompt: "Use $preserve-web-evidence to preserve these public web sources with appropriate provenance and fidelity."

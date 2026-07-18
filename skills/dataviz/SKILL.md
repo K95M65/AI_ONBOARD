@@ -39,5 +39,5 @@ Read this before writing the first line of chart code (any library, any medium) 
 Claude Code ships a **more comprehensive built-in `dataviz` skill** (with a runnable palette validator and
 light/dark theming). If you're on Claude Code, prefer that one and **don't install this copy** — two skills
 with the same name collide/shadow. This lean, portable version is for **Codex, opencode, and other harnesses**
-(or projects) that don't have the built-in. `link.sh --skills` and the global installer copy every skill, so
-delete `dataviz` from your Claude Code skills dir if the built-in is present.
+(or projects) that don't have the built-in. `link.sh --skills` and the global installer copy every standard
+skill, so delete `dataviz` from your Claude Code skills dir if the built-in is present.

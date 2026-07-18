@@ -1,0 +1,4 @@
+interface:
+  display_name: "Define a Brand Foundation"
+  short_description: "Define durable brand strategy and expression"
+  default_prompt: "Use $define-brand-foundation to create an evidence-based brand foundation for this product."

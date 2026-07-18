@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design and Build Website"
+  short_description: "Strategy-to-launch website workflow"
+  default_prompt: "Use $design-and-build-website to take this marketing website from strategy and wireframes through copy, implementation, QA, and publishing."

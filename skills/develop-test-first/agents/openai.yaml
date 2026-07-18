@@ -1,0 +1,4 @@
+interface:
+  display_name: "Develop Test First"
+  short_description: "Drive behavior changes from failing tests"
+  default_prompt: "Use $develop-test-first to implement this behavior from a focused failing test through verified refactoring."

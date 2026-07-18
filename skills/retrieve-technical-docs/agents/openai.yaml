@@ -1,0 +1,4 @@
+interface:
+  display_name: "Retrieve Technical Docs"
+  short_description: "Ground implementation in current official docs"
+  default_prompt: "Use $retrieve-technical-docs to find version-matched official documentation for this implementation question."

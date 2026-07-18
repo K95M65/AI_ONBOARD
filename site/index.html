@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#171914">
+    <meta
+      name="description"
+      content="@RSTHRIVES Portable Agent Workflow Framework connects Codex, Claude Code, and OpenCode to one project context, focused skills, independent review, and verified outcomes."
+    >
+    <meta property="og:title" content="@RSTHRIVES Portable Agent Workflow Framework">
+    <meta
+      property="og:description"
+      content="Explore how project instructions, portable skills, and independent subagents turn an AI request into a verified result."
+    >
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://k95m65.github.io/AI_ONBOARD/">
+    <meta property="og:image" content="https://k95m65.github.io/AI_ONBOARD/preview.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:creator" content="@rsthrive">
+    <link rel="canonical" href="https://k95m65.github.io/AI_ONBOARD/">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    >
+    <link rel="stylesheet" href="styles.css?v=20260718-9">
+    <script src="app.js?v=20260718-9" defer></script>
+    <title>@RSTHRIVES Portable Agent Workflow Framework — AI_ONBOARD</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header" data-header>
+      <a class="wordmark" href="#top" aria-label="AI_ONBOARD home">
+        <span class="wordmark-mark" aria-hidden="true">A/O</span>
+        <span>AI_ONBOARD</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#problem">Problem</a>
+        <a href="#router">Router</a>
+        <a href="#lifecycle">Lifecycle</a>
+        <a href="#catalog">Skills</a>
+      </nav>
+      <a
+        class="header-action"
+        href="https://github.com/K95M65/AI_ONBOARD"
+        data-repo-link
+      >View repository <span aria-hidden="true">↗</span></a>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <div class="hero-grid" aria-hidden="true"></div>
+        <div class="hero-kicker">
+          <span class="status-light"></span>
+          @RSTHRIVES Portable Agent Workflow Framework
+        </div>
+        <h1 id="hero-title">
+          <span class="hero-line">One request.</span>
+          <span class="hero-line hero-line-accent">The right context.</span>
+          <span class="hero-line">A verified result.</span>
+        </h1>
+        <p class="hero-lede">
+          Across Codex, Claude Code, and OpenCode, stop rebuilding your AI workflow for every tool.
+          AI_ONBOARD connects durable project instructions, focused skills, and independent review into one
+          legible path from intent to outcome.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#router">Route a request</a>
+          <button class="button button-secondary copy-button" type="button" data-copy-command>
+            <span>Copy install template</span>
+            <span aria-hidden="true">⌘</span>
+          </button>
+        </div>
+        <section class="harness-support" aria-labelledby="harness-support-title">
+          <h2 class="harness-support-label" id="harness-support-title">First-class support</h2>
+          <ul>
+            <li><strong translate="no">Codex</strong><span>native context + TOML</span></li>
+            <li><strong translate="no">Claude Code</strong><span>import + settings</span></li>
+            <li><strong translate="no">OpenCode</strong><span>native context + JSON</span></li>
+          </ul>
+        </section>
+        <dl class="system-counts" aria-label="Repository inventory">
+          <div>
+            <dt data-count="skills">67</dt>
+            <dd>portable skills</dd>
+          </div>
+          <div>
+            <dt data-count="agents">6</dt>
+            <dd>independent agents</dd>
+          </div>
+          <div>
+            <dt data-count="mechanisms">3</dt>
+            <dd>composable layers</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="problem-section section-shell" id="problem" aria-labelledby="problem-title">
+        <div class="section-index" aria-hidden="true">01 / PROBLEM</div>
+        <div class="problem-heading">
+          <p class="eyebrow">Context drift is an architecture problem</p>
+          <h2 id="problem-title">Every AI tool asks you to start over.</h2>
+        </div>
+        <div class="problem-copy">
+          <p>
+            Tool-specific instruction files drift. Reusable procedures get pasted into every repository.
+            Reviews happen in the same context that authored the work. The result is more configuration,
+            less trust, and no clear route from a request to “done.”
+          </p>
+        </div>
+        <ol class="failure-sequence">
+          <li>
+            <span class="failure-number">01</span>
+            <div>
+              <h3>Instructions fragment</h3>
+              <p>Project facts split across AGENTS.md, CLAUDE.md, rules, prompts, and memory.</p>
+            </div>
+          </li>
+          <li>
+            <span class="failure-number">02</span>
+            <div>
+              <h3>Capabilities collide</h3>
+              <p>Large bundles load every procedure at once, even when one narrow skill would do.</p>
+            </div>
+          </li>
+          <li>
+            <span class="failure-number">03</span>
+            <div>
+              <h3>“Done” becomes a guess</h3>
+              <p>The author checks its own work, compile success substitutes for runtime evidence, and release state stays ambiguous.</p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <section class="mechanism-section section-shell" aria-labelledby="mechanism-title">
+        <div class="section-index" aria-hidden="true">02 / MODEL</div>
+        <div class="mechanism-heading">
+          <p class="eyebrow">Three layers, one shared workflow</p>
+          <h2 id="mechanism-title">Put knowledge where it earns its context.</h2>
+        </div>
+        <div class="mechanism-diagram">
+          <article class="mechanism mechanism-context">
+            <span class="mechanism-code">01 / ALWAYS</span>
+            <h3>Project context</h3>
+            <p>AGENTS.md holds durable facts: architecture, commands, conventions, and safety boundaries.</p>
+            <span class="mechanism-load">Loaded every session</span>
+          </article>
+          <div class="mechanism-connector" aria-hidden="true"><span>+</span></div>
+          <article class="mechanism mechanism-skill">
+            <span class="mechanism-code">02 / ON DEMAND</span>
+            <h3>Focused skills</h3>
+            <p>SKILL.md packages one repeatable job and loads only when the request needs it.</p>
+            <span class="mechanism-load">Loaded by intent</span>
+          </article>
+          <div class="mechanism-connector" aria-hidden="true"><span>+</span></div>
+          <article class="mechanism mechanism-agent">
+            <span class="mechanism-code">03 / DELEGATED</span>
+            <h3>Independent agents</h3>
+            <p>Research, review, security, design, accessibility, and verification run in isolated context.</p>
+            <span class="mechanism-load">Loaded for separation</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="lifecycle-section section-shell" id="lifecycle" aria-labelledby="lifecycle-title">
+        <div class="section-index" aria-hidden="true">03 / LIFECYCLE</div>
+        <div class="lifecycle-heading">
+          <p class="eyebrow">Portable does not mean disposable</p>
+          <h2 id="lifecycle-title">Install deliberately.<br>Upgrade without surprises.</h2>
+          <p>
+            Select only the capability profiles a project needs. AI_ONBOARD records the desired state,
+            locks the exact source, and protects anything the user has changed.
+          </p>
+        </div>
+        <ol class="lifecycle-model">
+          <li>
+            <span>01 / DECLARE</span>
+            <h3>Choose the surface</h3>
+            <code>ai-onboard.json</code>
+            <p>Harnesses, capability profiles, agents, configs, and optional manual foundations.</p>
+          </li>
+          <li>
+            <span>02 / RESOLVE</span>
+            <h3>Lock what landed</h3>
+            <code>.ai-onboard.lock.json</code>
+            <p>Revision, checksums, ownership, and managed configuration keys stay inspectable.</p>
+          </li>
+          <li>
+            <span>03 / PROTECT</span>
+            <h3>Preserve user work</h3>
+            <code>.ai-onboard/conflicts/</code>
+            <p>Modified files are never overwritten or removed; incoming conflicts are staged for review.</p>
+          </li>
+        </ol>
+        <section class="lifecycle-console" aria-labelledby="lifecycle-commands-title">
+          <h3 class="visually-hidden" id="lifecycle-commands-title">Example lifecycle commands</h3>
+          <div class="lifecycle-command">
+            <span>Install a focused surface</span>
+            <code>python3 …/ai_onboard.py install --profile core --profile product</code>
+          </div>
+          <div class="lifecycle-command">
+            <span>Preview an available update</span>
+            <code>python3 .ai-onboard/bin/ai_onboard.py upgrade --check</code>
+          </div>
+          <div class="lifecycle-command">
+            <span>Prove what cleanup would do</span>
+            <code>python3 .ai-onboard/bin/ai_onboard.py uninstall --dry-run</code>
+          </div>
+        </section>
+      </section>
+
+      <section class="router-section" id="router" aria-labelledby="router-title">
+        <div class="router-intro section-shell">
+          <div class="section-index" aria-hidden="true">04 / ROUTER</div>
+          <div>
+            <p class="eyebrow">Route work through the framework</p>
+            <h2 id="router-title">What are you asking the agent to do?</h2>
+          </div>
+          <p>
+            Choose a request from a category. The route shows which orchestration skill owns the work,
+            which specialists join only when relevant, and which independent lenses close the loop.
+          </p>
+        </div>
+
+        <div class="router-workbench section-shell">
+          <div class="request-options" role="radiogroup" aria-label="Request type">
+            <div class="request-group" role="group" aria-labelledby="request-group-create">
+              <p class="request-group-label" id="request-group-create">Create &amp; design</p>
+              <div class="request-group-options">
+                <button type="button" class="request-option is-active" data-route="website" role="radio" aria-checked="true">
+                  <span>01</span> Build a website
+                </button>
+                <button type="button" class="request-option" data-route="product" role="radio" aria-checked="false" tabindex="-1">
+                  <span>02</span> Design a product
+                </button>
+              </div>
+            </div>
+            <div class="request-group" role="group" aria-labelledby="request-group-build">
+              <p class="request-group-label" id="request-group-build">Build &amp; ship</p>
+              <div class="request-group-options">
+                <button type="button" class="request-option" data-route="apple" role="radio" aria-checked="false" tabindex="-1">
+                  <span>03</span> Build for Apple
+                </button>
+                <button type="button" class="request-option" data-route="cloudflare" role="radio" aria-checked="false" tabindex="-1">
+                  <span>04</span> Ship on Cloudflare
+                </button>
+                <button type="button" class="request-option" data-route="delivery" role="radio" aria-checked="false" tabindex="-1">
+                  <span>05</span> Deliver a change
+                </button>
+              </div>
+            </div>
+            <div class="request-group" role="group" aria-labelledby="request-group-research">
+              <p class="request-group-label" id="request-group-research">Research &amp; assess</p>
+              <div class="request-group-options">
+                <button type="button" class="request-option" data-route="security" role="radio" aria-checked="false" tabindex="-1">
+                  <span>06</span> Secure a system
+                </button>
+                <button type="button" class="request-option" data-route="analysis" role="radio" aria-checked="false" tabindex="-1">
+                  <span>07</span> Analyze a market
+                </button>
+                <button type="button" class="request-option" data-route="osint" role="radio" aria-checked="false" tabindex="-1">
+                  <span>08</span> Conduct OSINT
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <p class="visually-hidden" data-route-status aria-live="polite"></p>
+          <div class="route-display">
+            <div class="route-request">
+              <span class="route-label">Request</span>
+              <p data-route-request>“Build a clear, conversion-oriented project website.”</p>
+            </div>
+            <div class="route-line" aria-hidden="true"></div>
+            <ol class="route-stages" data-route-stages>
+              <li>
+                <span class="route-stage-index">01</span>
+                <div>
+                  <span class="route-label">Context</span>
+                  <h3>Read the project contract</h3>
+                  <div class="route-chips">
+                    <span>AGENTS.md</span><span>brand evidence</span><span>release boundary</span>
+                  </div>
+                </div>
+              </li>
+              <li>
+                <span class="route-stage-index">02</span>
+                <div>
+                  <span class="route-label">Orchestrator</span>
+                  <h3>Own the strategy-to-launch loop</h3>
+                  <div class="route-chips"><span>design-and-build-website</span></div>
+                </div>
+              </li>
+              <li>
+                <span class="route-stage-index">03</span>
+                <div>
+                  <span class="route-label">Specialists</span>
+                  <h3>Add only the expertise the route needs</h3>
+                  <div class="route-chips">
+                    <span>define-brand-foundation</span><span>design-product-content</span><span>audit-accessibility</span>
+                  </div>
+                </div>
+              </li>
+              <li>
+                <span class="route-stage-index">04</span>
+                <div>
+                  <span class="route-label">Independent lenses</span>
+                  <h3>Challenge the implementation</h3>
+                  <div class="route-chips">
+                    <span>design-review</span><span>accessibility-review</span><span>verifier</span>
+                  </div>
+                </div>
+              </li>
+              <li>
+                <span class="route-stage-index">05</span>
+                <div>
+                  <span class="route-label">Evidence</span>
+                  <h3>Prove the outcome in a real browser</h3>
+                  <div class="route-chips">
+                    <span>test-browser-workflows</span><span>responsive</span><span>keyboard</span><span>runtime</span>
+                  </div>
+                </div>
+              </li>
+            </ol>
+            <div class="route-result">
+              <span class="route-label">End result</span>
+              <p data-route-result>A tested static site, independently reviewed and ready for an authorized publish.</p>
+            </div>
+            <noscript>
+              <p class="noscript-message">Interactive route switching requires JavaScript. The default website route is shown above.</p>
+            </noscript>
+          </div>
+        </div>
+      </section>
+
+      <section class="workflow-section section-shell" aria-labelledby="workflow-title">
+        <div class="section-index" aria-hidden="true">05 / WORKFLOW</div>
+        <div class="workflow-heading">
+          <p class="eyebrow">The shared delivery loop</p>
+          <h2 id="workflow-title">Specialists change. The standard of done does not.</h2>
+        </div>
+        <div class="workflow-track">
+          <article>
+            <span>01</span>
+            <h3>Understand</h3>
+            <p>GOAL and GRILL are original AI_ONBOARD skills. They are manual opt-ins: invoke either only when the user explicitly requests that workflow; otherwise skip them.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>Compose</h3>
+            <p>Load one orchestrator and the smallest set of bounded specialists required.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>Build</h3>
+            <p>Implement a coherent vertical slice and preserve accepted decisions across phases.</p>
+          </article>
+          <article>
+            <span>04</span>
+            <h3>Challenge</h3>
+            <p>Use independent design, accessibility, security, or correctness review where risk warrants it.</p>
+          </article>
+          <article>
+            <span>05</span>
+            <h3>Verify</h3>
+            <p>Run real checks and task scenarios. Failed evidence loops back to implementation.</p>
+          </article>
+          <article>
+            <span>06</span>
+            <h3>Release</h3>
+            <p>Cross the external-action gate, smoke-test the result, and report exactly what shipped.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="catalog-section" id="catalog" aria-labelledby="catalog-title">
+        <div class="catalog-intro section-shell">
+          <div class="section-index" aria-hidden="true">06 / CATALOG</div>
+          <div>
+            <p class="eyebrow">Generated from the repository</p>
+            <h2 id="catalog-title"><span data-count="skills">67</span> skills. No mystery box.</h2>
+          </div>
+          <p>
+            Search the live catalog. Every entry links to its canonical SKILL.md, so the website and the
+            agent-readable source stay inspectable.
+          </p>
+        </div>
+
+        <div class="catalog-workbench section-shell">
+          <div class="catalog-controls">
+            <label class="search-label" for="skill-search">
+              <span>Search skills</span>
+              <input
+                id="skill-search"
+                type="search"
+                placeholder="Try “accessibility”, “Swift”, or “release”"
+                autocomplete="off"
+                data-skill-search
+              >
+            </label>
+            <div class="category-filters" role="radiogroup" data-category-filters aria-label="Filter by one capability group"></div>
+          </div>
+
+          <div class="catalog-status" aria-live="polite">
+            <span data-catalog-count>Loading catalog…</span>
+            <button type="button" class="text-button" data-clear-filter hidden>Clear filters</button>
+          </div>
+
+          <div class="skill-list" data-skill-list></div>
+          <button type="button" class="button catalog-more" data-show-all-skills>
+            Show all skills
+          </button>
+          <noscript>
+            <p class="noscript-message">JavaScript is required for catalog search. Browse the canonical catalog in the repository instead.</p>
+          </noscript>
+        </div>
+      </section>
+
+      <section class="result-section section-shell" id="result" aria-labelledby="result-title">
+        <div class="section-index" aria-hidden="true">07 / RESULT</div>
+        <div class="result-copy">
+          <p class="eyebrow">The outcome</p>
+          <h2 id="result-title">Less agent theater.<br>More evidence.</h2>
+          <p>
+            The final response is not “should work.” It is a compact handoff: what changed, which decisions
+            governed it, which checks ran, what independent review found, what shipped, and what still needs
+            authority.
+          </p>
+          <a class="button button-primary" href="https://github.com/K95M65/AI_ONBOARD#quickstart">
+            Install the framework <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+        <div class="result-terminal" aria-label="Example verified result">
+          <div class="terminal-bar">
+            <span>verified-result.md</span>
+            <span>● ● ●</span>
+          </div>
+          <dl>
+            <div>
+              <dt>Outcome</dt>
+              <dd>Published project website</dd>
+            </div>
+            <div>
+              <dt>Context</dt>
+              <dd>AGENTS.md + repository conventions</dd>
+            </div>
+            <div>
+              <dt>Skills</dt>
+              <dd>design-and-build-website → audit-accessibility</dd>
+            </div>
+            <div>
+              <dt>Review</dt>
+              <dd>design-review · accessibility-review · verifier</dd>
+            </div>
+            <div>
+              <dt>Evidence</dt>
+              <dd>build ✓ browser ✓ keyboard ✓ responsive ✓</dd>
+            </div>
+            <div>
+              <dt>Release</dt>
+              <dd>GitHub Pages · smoke-tested</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>
+        <span class="wordmark-mark" aria-hidden="true">A/O</span>
+        <p>@RSTHRIVES Portable Agent Workflow Framework.</p>
+      </div>
+      <a class="creator-link" href="https://x.com/rsthrive" rel="me">
+        <span class="creator-label"><span aria-hidden="true">●</span> Framework by</span>
+        <strong>@rsthrive</strong>
+        <span class="creator-arrow" aria-hidden="true">↗</span>
+      </a>
+      <div class="footer-links">
+        <a href="https://github.com/K95M65/AI_ONBOARD">GitHub</a>
+        <a href="https://github.com/K95M65/AI_ONBOARD/blob/main/README.md">Documentation</a>
+        <a href="https://github.com/K95M65/AI_ONBOARD/blob/main/LICENSE">MIT License</a>
+      </div>
+    </footer>
+
+    <template id="skill-row-template">
+      <article class="skill-row">
+        <div class="skill-index"></div>
+        <div class="skill-main">
+          <div class="skill-heading">
+            <h3></h3>
+            <span class="skill-kind"></span>
+          </div>
+          <p></p>
+        </div>
+        <a class="skill-link" href="#" aria-label="">
+          <span>Source</span>
+          <span aria-hidden="true">↗</span>
+        </a>
+      </article>
+    </template>
+
+    <div class="toast" role="status" aria-live="polite" data-toast hidden>Install template copied</div>
+  </body>
+</html>

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Grill Requirements"
+  short_description: "Pressure-test requirements before planning"
+  default_prompt: "Use $grill-requirements to challenge this request one decision at a time before we plan or build."
+policy:
+  allow_implicit_invocation: true

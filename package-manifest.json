@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "package": "ai-onboard",
+  "version": "0.1.0",
+  "repository": "K95M65/AI_ONBOARD",
+  "default_channel": "edge",
+  "profiles": {
+    "core": {
+      "description": "Repository delivery, testing, debugging, review, and maintenance workflows.",
+      "categories": [
+        "Engineering & delivery"
+      ]
+    },
+    "product": {
+      "description": "Website, product, brand, content, design-system, accessibility, and measurement workflows.",
+      "categories": [
+        "Product & experience"
+      ]
+    },
+    "apple": {
+      "description": "Swift, SwiftUI, AppKit, persistence, testing, architecture, and Apple-platform accessibility.",
+      "categories": [
+        "Apple engineering"
+      ]
+    },
+    "security": {
+      "description": "Security assessment, threat modeling, attack-surface, vulnerability, identity, and hardening workflows.",
+      "categories": [
+        "Security & trust"
+      ]
+    },
+    "cloudflare": {
+      "description": "Cloudflare Workers, Agents, Durable Objects, Zero Trust, deployment, and platform workflows.",
+      "categories": [
+        "Cloudflare platform"
+      ]
+    },
+    "research": {
+      "description": "Research, analysis, OSINT, evidence, market, competitive, visualization, and communication workflows.",
+      "categories": [
+        "Research & communication"
+      ]
+    }
+  }
+}

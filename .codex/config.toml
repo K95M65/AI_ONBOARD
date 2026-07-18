@@ -1,0 +1,6 @@
+# Project-scoped Codex settings. Personal model, provider, approval, and UI defaults belong in
+# ~/.codex/config.toml or a named ~/.codex/<profile>.config.toml file.
+
+[agents]
+max_threads = 4
+max_depth = 1

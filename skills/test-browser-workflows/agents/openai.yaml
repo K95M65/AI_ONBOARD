@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Browser Workflows"
+  short_description: "Exercise browser behavior with durable evidence"
+  default_prompt: "Use $test-browser-workflows to test this browser flow across behavior, accessibility, and responsive states."

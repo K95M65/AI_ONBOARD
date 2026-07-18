@@ -1,0 +1,4 @@
+interface:
+  display_name: "Assess Security Controls"
+  short_description: "Assess controls from objective evidence"
+  default_prompt: "Use $assess-security-controls to evaluate this system against the appropriate security framework using traceable evidence."

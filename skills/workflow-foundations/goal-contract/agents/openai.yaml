@@ -1,0 +1,6 @@
+interface:
+  display_name: "Goal Contract"
+  short_description: "Define measurable, native-first goal contracts"
+  default_prompt: "Use $goal-contract to turn this objective into a measurable goal contract with clear completion evidence."
+policy:
+  allow_implicit_invocation: true

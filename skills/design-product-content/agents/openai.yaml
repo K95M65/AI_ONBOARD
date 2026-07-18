@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design Product Content"
+  short_description: "Design clear, consistent interface content"
+  default_prompt: "Use $design-product-content to improve the language and content states in this product workflow."

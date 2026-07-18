@@ -27,7 +27,9 @@ Memory file scopes (all optional, all layer together):
 | `~/.claude/CLAUDE.md` | All your projects | ❌ personal |
 | `./subdir/CLAUDE.md` | Just that subtree | ✅ yes |
 
-> `CLAUDE.local.md` is deprecated — use imports (`@path`) instead.
+`CLAUDE.local.md` remains available for uncommitted project-local memory. Prefer
+`.claude/settings.local.json` for personal settings and keep shared project facts in the imported
+`AGENTS.md`.
 
 ## Power features (the `.claude/` directory)
 
@@ -37,8 +39,7 @@ These are Claude-specific and stay **out** of `AGENTS.md`.
 .claude/
 ├── settings.json         # permissions, env vars, hooks (team-shared, committed)
 ├── settings.local.json   # personal overrides (gitignored)
-├── commands/             # custom slash commands — one .md per command
-│   └── test.md
+├── rules/                # Claude-only path-scoped rules
 ├── agents/               # subagents — one .md per agent, with frontmatter
 │   └── db-migrate.md
 └── skills/               # skills — one folder per skill
@@ -57,14 +58,32 @@ These are Claude-specific and stay **out** of `AGENTS.md`.
 }
 ```
 
-Use the `/permissions` command or the `update-config` skill to edit these safely.
+Use `/permissions` to inspect and edit resolved rules, `/config` for settings, and `/doctor` to diagnose
+invalid or conflicting configuration.
 
-### Custom slash commands
+AI_ONBOARD's conservative project template also keeps manual workflow foundations manual:
 
-`.claude/commands/test.md` becomes `/test`. The file body is the prompt; `$ARGUMENTS` and `$1`, `$2` inject args.
+```json
+{
+  "skillOverrides": {
+    "goal-contract": "user-invocable-only",
+    "grill-requirements": "user-invocable-only"
+  }
+}
+```
+
+`user-invocable-only` requires Claude Code 2.1.129 or later. It removes both descriptions from automatic
+model selection and loads the skill only when the user invokes it.
+
+### Custom commands and skills
+
+Claude Code still accepts command definitions, but new reusable workflows should normally be skills.
+`.claude/skills/test/SKILL.md` becomes `/test`, can carry references or scripts, and can be either manually
+or model invoked.
 
 ```markdown
 ---
+name: test
 description: Run the test suite for a given package
 ---
 Run `npm test -- packages/$1` and summarize failures.
@@ -83,7 +102,7 @@ tools: Read, Edit, Bash
 You are a database migration specialist. Always create a migration file, never edit the DB directly...
 ```
 
-### Hooks (automation the model can't skip)
+### Hooks (deterministic enforcement)
 
 Hooks run **shell commands** on lifecycle events (`PreToolUse`, `PostToolUse`, `Stop`, …). Use them for
 "always run X after an edit" — e.g. auto-format on every file write:
@@ -99,8 +118,8 @@ Hooks run **shell commands** on lifecycle events (`PreToolUse`, `PostToolUse`, `
 }
 ```
 
-> The harness (not the model) executes hooks, which is why they're the right tool for *guaranteed* behavior.
-> Use the `update-config` skill to add them.
+Use hooks for deterministic guardrails and mechanical automation. Keep reasoning-heavy procedures in
+skills, and do not run the full test suite after every edit.
 
 ### Skills
 
@@ -153,7 +172,20 @@ the `gsd-surface` skill or per-subagent `tools`/prompt.
 ## Recommended baseline
 
 ```bash
-printf '@AGENTS.md\n' > CLAUDE.md
-mkdir -p .claude/skills .claude/commands
-# commit .claude/settings.json; gitignore .claude/settings.local.json
+python3 /path/to/AI_ONBOARD/scripts/ai_onboard.py \
+  --target /path/to/project \
+  install \
+  --harness claude \
+  --profile core \
+  --agents \
+  --configs
 ```
+
+This writes the thin `CLAUDE.md` import, installs the selected skills and reference agents, and safely
+merges AI_ONBOARD's managed settings keys. It never replaces the target `AGENTS.md`; personal settings stay
+in `.claude/settings.local.json`. Use the installed manager for
+[`status`, upgrades, and cleanup](../install-management.md).
+
+If project agents already provide review and security lenses, disable overlapping review plugins for that
+project instead of paying for two competing authorities. Browser or Playwright plugins remain complementary:
+they provide tools, while `test-browser-workflows` provides the validation procedure.

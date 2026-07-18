@@ -1,0 +1,4 @@
+interface:
+  display_name: "Develop Apple Platform App"
+  short_description: "Target-aware Swift and macOS engineering workflow"
+  default_prompt: "Use $develop-apple-platform-app to inspect this Apple-platform project and implement the requested feature with target-aware Swift, UI, testing, accessibility, and distribution practices."

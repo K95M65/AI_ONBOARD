@@ -1,0 +1,4 @@
+interface:
+  display_name: "Coordinate Data Views"
+  short_description: "Synchronize linked data representations"
+  default_prompt: "Use $coordinate-data-views to design synchronized table, list, chart, map, timeline, or diagram views for this data."

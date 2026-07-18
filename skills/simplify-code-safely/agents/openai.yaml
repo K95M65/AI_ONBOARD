@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simplify Code Safely"
+  short_description: "Reduce complexity without changing behavior"
+  default_prompt: "Use $simplify-code-safely to simplify this code while preserving behavior and proving the change."

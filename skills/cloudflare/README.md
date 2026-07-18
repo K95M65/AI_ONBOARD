@@ -4,6 +4,8 @@ A curated set of [Cloudflare's Agent Skills](https://github.com/cloudflare/skill
 Cloudflare Developer Platform. Vendored here (Apache-2.0) so they install and version alongside the rest of
 this library — see [`NOTICE.md`](NOTICE.md) for provenance and attribution.
 
+[See the Cloudflare route in the interactive project map](https://k95m65.github.io/AI_ONBOARD/#router).
+
 Because Agent Skills is an open standard, these are the **same `SKILL.md` format** as the rest of `skills/`
 and install into the same places (`.claude/skills/` for Claude Code, `.agents/skills/` for Codex).
 
@@ -22,8 +24,9 @@ and install into the same places (`.claude/skills/` for Claude Code, `.agents/sk
 
 ## Install
 
-Same as any skill in this repo — `link.sh --skills` picks these up automatically (it discovers skills at any
-depth), or copy a folder directly:
+Select `--profile cloudflare` with the [managed installer](../../docs/install-management.md) for checksummed
+ownership, upgrade, and uninstall. The legacy `link.sh --skills` full-copy path also discovers these skills
+at any depth. Individual folders can still be copied directly:
 
 ```bash
 cp -R skills/cloudflare/wrangler .claude/skills/     # Claude Code
@@ -40,3 +43,6 @@ knowledge** — Cloudflare's platform moves fast. That's intended; don't "fix" i
 These are pinned to an upstream commit (`.upstream-commit`). To refresh, re-vendor from
 <https://github.com/cloudflare/skills>, or install upstream live via `npx skills` / the Claude Code plugin
 (`/plugin install cloudflare@cloudflare`) and skip the vendored copy.
+
+After refreshing the vendored set, update this index and run `python3 scripts/sync_project_docs.py` from the
+repository root. Do not edit upstream skill READMEs solely to add project navigation.

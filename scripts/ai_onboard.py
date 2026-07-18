@@ -1,0 +1,1942 @@
+#!/usr/bin/env python3
+"""Manage reversible AI_ONBOARD installations in a project.
+
+The manager is dependency-free. It records desired state separately from the
+resolved lock, never overwrites divergent user files, and removes only content
+whose current checksum still matches content it installed.
+"""
+
+from __future__ import annotations
+
+import argparse
+import contextlib
+import copy
+import hashlib
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+import time
+import tomllib
+import urllib.error
+import urllib.parse
+import urllib.request
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Iterator
+
+
+SCHEMA = 1
+DESIRED_NAME = "ai-onboard.json"
+LOCK_NAME = ".ai-onboard.lock.json"
+STATE_DIR = ".ai-onboard"
+SUPPORTED_HARNESSES = ("claude", "codex", "opencode")
+DEFAULT_REPOSITORY = "K95M65/AI_ONBOARD"
+MAX_ARCHIVE_BYTES = 100 * 1024 * 1024
+MAX_EXTRACTED_BYTES = 256 * 1024 * 1024
+MAX_ARCHIVE_MEMBERS = 20_000
+MANAGED_ARTIFACT_PATTERNS = (
+    re.compile(r"\.agents/skills/[a-z0-9]+(?:-[a-z0-9]+)*"),
+    re.compile(r"\.claude/skills/[a-z0-9]+(?:-[a-z0-9]+)*"),
+    re.compile(r"\.claude/agents/[a-z0-9]+(?:-[a-z0-9]+)*\.md"),
+    re.compile(r"\.codex/agents/[a-z0-9]+(?:-[a-z0-9]+)*\.toml"),
+    re.compile(r"\.opencode/agents/[a-z0-9]+(?:-[a-z0-9]+)*\.md"),
+    re.compile(r"\.ai-onboard/bin/ai_onboard\.py"),
+)
+ALLOWED_CONFIG_VALUES: dict[str, dict[str, Any]] = {
+    ".claude/settings.json": {
+        "/permissions/deny": [
+            "Read(./.env)",
+            "Read(./.env.*)",
+            "Read(./secrets/**)",
+        ],
+        "/skillOverrides/goal-contract": "user-invocable-only",
+        "/skillOverrides/grill-requirements": "user-invocable-only",
+    },
+    ".codex/config.toml": {
+        "/agents/max_threads": 4,
+        "/agents/max_depth": 1,
+    },
+    "opencode.json": {
+        "/$schema": "https://opencode.ai/config.json",
+        "/permission/edit": "ask",
+        "/permission/bash": "ask",
+        "/permission/external_directory": "deny",
+        "/permission/skill/*": "allow",
+        "/permission/skill/goal-contract": "ask",
+        "/permission/skill/grill-requirements": "ask",
+        "/compaction/auto": True,
+        "/compaction/prune": True,
+        "/compaction/reserved": 12000,
+        "/watcher/ignore": [
+            ".git/**",
+            ".agents/skills/**",
+            ".claude/skills/**",
+            "node_modules/**",
+            "dist/**",
+            "output/**",
+        ],
+    },
+}
+
+
+class LifecycleError(RuntimeError):
+    """User-actionable lifecycle failure."""
+
+
+@dataclass(frozen=True)
+class Source:
+    root: Path
+    manifest: dict[str, Any]
+    catalog: dict[str, Any]
+    revision: str
+    content_digest: str
+
+
+@dataclass(frozen=True)
+class Artifact:
+    source: Path
+    destination: str
+    source_label: str
+
+
+def read_json(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise LifecycleError(f"cannot read JSON {path}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise LifecycleError(f"{path} must contain a JSON object")
+    return value
+
+
+def atomic_write(path: Path, text: str, dry_run: bool = False) -> None:
+    if dry_run:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    mode = (path.stat().st_mode & 0o7777) if path.is_file() else 0o600
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.tmp-",
+        dir=path.parent,
+        text=True,
+    )
+    temporary = Path(temporary_name)
+    try:
+        os.fchmod(descriptor, mode)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        os.replace(temporary, path)
+    finally:
+        with contextlib.suppress(OSError):
+            os.close(descriptor)
+        temporary.unlink(missing_ok=True)
+
+
+def write_json(path: Path, value: dict[str, Any], dry_run: bool = False) -> None:
+    atomic_write(path, json.dumps(value, indent=2, sort_keys=True) + "\n", dry_run)
+
+
+def sha256_path(path: Path) -> str:
+    digest = hashlib.sha256()
+    if path.is_symlink():
+        digest.update(b"symlink\0")
+        digest.update(os.readlink(path).encode())
+        return digest.hexdigest()
+    if path.is_file():
+        digest.update(b"file\0")
+        digest.update(path.read_bytes())
+        return digest.hexdigest()
+    if path.is_dir():
+        digest.update(b"directory\0")
+        for child in sorted(path.rglob("*")):
+            relative = child.relative_to(path).as_posix()
+            digest.update(relative.encode())
+            digest.update(b"\0")
+            if child.is_symlink():
+                digest.update(b"symlink\0")
+                digest.update(os.readlink(child).encode())
+            elif child.is_dir():
+                digest.update(b"directory\0")
+            else:
+                digest.update(child.read_bytes())
+            digest.update(b"\0")
+        return digest.hexdigest()
+    return "missing"
+
+
+def copy_path(source: Path, destination: Path, dry_run: bool = False) -> None:
+    if dry_run:
+        return
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    staged = destination.with_name(f".{destination.name}.stage-{os.getpid()}")
+    if staged.exists() or staged.is_symlink():
+        remove_path(staged)
+    if source.is_dir():
+        shutil.copytree(source, staged, symlinks=True)
+    else:
+        shutil.copy2(source, staged)
+    if destination.exists() or destination.is_symlink():
+        remove_path(destination)
+    os.replace(staged, destination)
+
+
+def remove_path(path: Path) -> None:
+    if path.is_symlink() or path.is_file():
+        path.unlink(missing_ok=True)
+    elif path.is_dir():
+        shutil.rmtree(path)
+
+
+def managed_path(target: Path, relative: str) -> Path:
+    """Resolve one managed path without allowing it to escape the target."""
+    relative_path = Path(relative)
+    if (
+        not relative
+        or relative_path.is_absolute()
+        or ".." in relative_path.parts
+    ):
+        raise LifecycleError(
+            f"managed path is outside the target project: {relative!r}"
+        )
+    target_resolved = target.resolve()
+    candidate = target / relative_path
+    resolved = candidate.resolve(strict=False)
+    if resolved != target_resolved and target_resolved not in resolved.parents:
+        raise LifecycleError(
+            f"managed path is outside the target project: {relative!r}"
+        )
+    return candidate
+
+
+def backup_path(target: Path, relative: str, dry_run: bool = False) -> None:
+    source = managed_path(target, relative)
+    if dry_run or not source.exists():
+        return
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    backup = managed_path(
+        target, f"{STATE_DIR}/backups/{stamp}/{relative}"
+    )
+    backup.parent.mkdir(parents=True, exist_ok=True)
+    if source.is_dir():
+        shutil.copytree(source, backup, symlinks=True, dirs_exist_ok=True)
+    else:
+        shutil.copy2(source, backup)
+
+
+def stage_conflict(
+    source: Path, target: Path, relative: str, dry_run: bool = False
+) -> None:
+    managed_path(target, relative)
+    conflict = managed_path(target, f"{STATE_DIR}/conflicts/{relative}")
+    copy_path(source, conflict, dry_run)
+
+
+def package_content_digest(root: Path) -> str:
+    digest = hashlib.sha256()
+    selected_paths = [
+        root / "package-manifest.json",
+        root / "site/data/catalog.json",
+        root / "scripts/ai_onboard.py",
+        root / "templates/configs",
+        root / "agents",
+        root / "skills",
+    ]
+    for selected in selected_paths:
+        if not selected.exists() and not selected.is_symlink():
+            continue
+        if selected.is_symlink():
+            raise LifecycleError(f"package source contains a symlink: {selected}")
+        files = [selected] if selected.is_file() else sorted(selected.rglob("*"))
+        for path in files:
+            if path.is_symlink():
+                raise LifecycleError(f"package source contains a symlink: {path}")
+            if path.is_dir():
+                continue
+            relative = path.relative_to(root).as_posix()
+            digest.update(relative.encode())
+            digest.update(b"\0")
+            digest.update(path.read_bytes())
+            digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def git_revision(root: Path, content_digest: str) -> str:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return f"content:{content_digest[:16]}"
+    top_level = subprocess.run(
+        ["git", "-C", str(root), "rev-parse", "--show-toplevel"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    if Path(top_level).resolve() != root:
+        raise LifecycleError("package source must be the root of its Git checkout")
+    package_paths = (
+        "package-manifest.json",
+        "site/data/catalog.json",
+        "scripts/ai_onboard.py",
+        "templates/configs",
+        "agents",
+        "skills",
+    )
+    dirty = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(root),
+            "status",
+            "--porcelain",
+            "--untracked-files=all",
+            "--",
+            *package_paths,
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    if dirty:
+        raise LifecycleError(
+            "package source has uncommitted managed content; commit it before install"
+        )
+    return result.stdout.strip()
+
+
+def load_source(root: Path, revision: str | None = None) -> Source:
+    root = root.resolve()
+    manifest = read_json(root / "package-manifest.json")
+    catalog = read_json(root / "site" / "data" / "catalog.json")
+    if manifest.get("schema") != SCHEMA:
+        raise LifecycleError(
+            f"unsupported package manifest schema {manifest.get('schema')!r}"
+        )
+    content_digest = package_content_digest(root)
+    return Source(
+        root,
+        manifest,
+        catalog,
+        revision or git_revision(root, content_digest),
+        content_digest,
+    )
+
+
+def source_artifact(root: Path, path: Path) -> Path:
+    try:
+        path.relative_to(root)
+    except ValueError as exc:
+        raise LifecycleError(f"package artifact is outside the source: {path}") from exc
+    if path.is_symlink():
+        raise LifecycleError(f"package artifact is a symlink: {path}")
+    resolved = path.resolve(strict=False)
+    if resolved != root and root not in resolved.parents:
+        raise LifecycleError(f"package artifact is outside the source: {path}")
+    if path.is_dir():
+        for child in path.rglob("*"):
+            if child.is_symlink():
+                raise LifecycleError(f"package artifact contains a symlink: {child}")
+    if not path.exists():
+        raise LifecycleError(f"package artifact is missing: {path}")
+    return path
+
+
+def github_token() -> str | None:
+    return os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+
+
+def validate_repository(repository: str) -> str:
+    if not re.fullmatch(
+        r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository
+    ):
+        raise LifecycleError(
+            f"invalid GitHub repository in desired state: {repository!r}"
+        )
+    return repository
+
+
+def validate_revision(revision: str) -> str:
+    if (
+        not re.fullmatch(r"[A-Za-z0-9._/-]{1,200}", revision)
+        or ".." in revision.split("/")
+    ):
+        raise LifecycleError(f"invalid source revision: {revision!r}")
+    return revision
+
+
+def github_json(api_path: str) -> dict[str, Any]:
+    url = f"https://api.github.com/{api_path.lstrip('/')}"
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "AI_ONBOARD lifecycle manager",
+    }
+    token = github_token()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    request = urllib.request.Request(
+        url,
+        headers=headers,
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            value = json.load(response)
+    except (OSError, urllib.error.HTTPError, json.JSONDecodeError) as exc:
+        try:
+            result = subprocess.run(
+                ["gh", "api", api_path.lstrip("/")],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            value = json.loads(result.stdout)
+        except (
+            OSError,
+            subprocess.CalledProcessError,
+            json.JSONDecodeError,
+        ) as fallback_exc:
+            raise LifecycleError(
+                f"GitHub request failed for {url}: {exc}. "
+                "For a private repository, authenticate gh or set GH_TOKEN."
+            ) from fallback_exc
+    if not isinstance(value, dict):
+        raise LifecycleError(f"unexpected GitHub response for {url}")
+    return value
+
+
+def safe_extract(archive: Path, destination: Path) -> None:
+    destination_resolved = destination.resolve()
+    with tarfile.open(archive, "r:gz") as bundle:
+        members = bundle.getmembers()
+        if len(members) > MAX_ARCHIVE_MEMBERS:
+            raise LifecycleError("source archive contains too many entries")
+        if sum(member.size for member in members) > MAX_EXTRACTED_BYTES:
+            raise LifecycleError("source archive expands beyond the safety limit")
+        for member in members:
+            candidate = (destination / member.name).resolve()
+            if (
+                candidate != destination_resolved
+                and destination_resolved not in candidate.parents
+            ):
+                raise LifecycleError("archive contains an unsafe path")
+            if member.issym() or member.islnk():
+                raise LifecycleError("archive symlinks are not accepted")
+            if not (member.isdir() or member.isreg()):
+                raise LifecycleError("archive contains an unsupported file type")
+        try:
+            bundle.extractall(destination, members=members, filter="data")
+        except TypeError:  # Python 3.11 without the extraction-filter backport.
+            bundle.extractall(destination, members=members)
+
+
+def download_archive(repository: str, revision: str, archive: Path) -> None:
+    url = f"https://codeload.github.com/{repository}/tar.gz/{revision}"
+    headers = {"User-Agent": "AI_ONBOARD lifecycle manager"}
+    token = github_token()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    request = urllib.request.Request(url, headers=headers)
+    try:
+        size = 0
+        with urllib.request.urlopen(request, timeout=60) as response:
+            length = response.headers.get("Content-Length")
+            if length and int(length) > MAX_ARCHIVE_BYTES:
+                raise LifecycleError("source archive exceeds the download limit")
+            with archive.open("wb") as handle:
+                while chunk := response.read(1024 * 1024):
+                    size += len(chunk)
+                    if size > MAX_ARCHIVE_BYTES:
+                        raise LifecycleError(
+                            "source archive exceeds the download limit"
+                        )
+                    handle.write(chunk)
+        return
+    except (OSError, urllib.error.HTTPError) as exc:
+        api_path = f"repos/{repository}/tarball/{revision}"
+        try:
+            process = subprocess.Popen(
+                ["gh", "api", api_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+            )
+            if process.stdout is None:
+                raise LifecycleError("could not read authenticated GitHub archive")
+            size = 0
+            with archive.open("wb") as handle:
+                while chunk := process.stdout.read(1024 * 1024):
+                    size += len(chunk)
+                    if size > MAX_ARCHIVE_BYTES:
+                        process.kill()
+                        process.wait()
+                        archive.unlink(missing_ok=True)
+                        raise LifecycleError(
+                            "source archive exceeds the download limit"
+                        )
+                    handle.write(chunk)
+            return_code = process.wait()
+            if return_code:
+                raise subprocess.CalledProcessError(
+                    return_code, ["gh", "api", api_path]
+                )
+            return
+        except (OSError, subprocess.CalledProcessError) as fallback_exc:
+            archive.unlink(missing_ok=True)
+            raise LifecycleError(
+                f"could not download {url}: {exc}. "
+                "For a private repository, authenticate gh or set GH_TOKEN."
+            ) from fallback_exc
+
+
+@contextlib.contextmanager
+def remote_source(
+    repository: str, channel: str, locked_revision: str | None = None
+) -> Iterator[Source]:
+    repository = validate_repository(repository)
+    if locked_revision:
+        revision = validate_revision(locked_revision)
+        if not re.fullmatch(r"[0-9a-fA-F]{40}", revision):
+            raise LifecycleError(
+                "locked remote revision must be an immutable commit SHA"
+            )
+    elif channel == "stable":
+        release = github_json(
+            f"repos/{repository}/releases/latest"
+        )
+        ref = str(release.get("tag_name", ""))
+        if not ref:
+            raise LifecycleError(
+                f"{repository} has no stable release; use channel 'edge'"
+            )
+        ref = validate_revision(ref)
+        commit = github_json(
+            f"repos/{repository}/commits/"
+            f"{urllib.parse.quote(ref, safe='')}"
+        )
+        revision = validate_revision(str(commit.get("sha", "")))
+    elif channel == "edge":
+        commit = github_json(
+            f"repos/{repository}/commits/main"
+        )
+        revision = validate_revision(str(commit.get("sha", "")))
+    else:
+        ref = validate_revision(channel)
+        commit = github_json(
+            f"repos/{repository}/commits/"
+            f"{urllib.parse.quote(ref, safe='')}"
+        )
+        revision = validate_revision(str(commit.get("sha", "")))
+    if not revision:
+        raise LifecycleError("could not resolve a source revision")
+
+    with tempfile.TemporaryDirectory(prefix="ai-onboard-source-") as temporary:
+        temporary_path = Path(temporary)
+        archive = temporary_path / "source.tar.gz"
+        download_archive(repository, revision, archive)
+        extracted = temporary_path / "extracted"
+        extracted.mkdir()
+        safe_extract(archive, extracted)
+        roots = [path for path in extracted.iterdir() if path.is_dir()]
+        if len(roots) != 1:
+            raise LifecycleError("downloaded source archive has an invalid layout")
+        yield load_source(roots[0], revision)
+
+
+@contextlib.contextmanager
+def resolve_source(
+    source_arg: str | None,
+    target: Path,
+    *,
+    use_locked_revision: bool = False,
+) -> Iterator[Source]:
+    if source_arg:
+        yield load_source(Path(source_arg))
+        return
+    repository_root = Path(__file__).resolve().parents[1]
+    if (repository_root / "package-manifest.json").is_file():
+        yield load_source(repository_root)
+        return
+
+    desired_path = managed_path(target, DESIRED_NAME)
+    desired = read_json(desired_path) if desired_path.is_file() else {}
+    source_config = desired.get("source", {})
+    repository = str(source_config.get("repository", DEFAULT_REPOSITORY))
+    channel = str(source_config.get("channel", "stable"))
+    locked_revision = None
+    lock_path = managed_path(target, LOCK_NAME)
+    if use_locked_revision and lock_path.is_file():
+        locked_revision = str(
+            read_json(lock_path).get("source_revision", "")
+        ) or None
+    with remote_source(repository, channel, locked_revision) as source:
+        yield source
+
+
+def split_csv(values: list[str] | None) -> list[str]:
+    result: list[str] = []
+    for value in values or []:
+        for item in value.split(","):
+            item = item.strip().lower()
+            if item and item not in result:
+                result.append(item)
+    return result
+
+
+def validate_harnesses(harnesses: list[str]) -> list[str]:
+    invalid = sorted(set(harnesses) - set(SUPPORTED_HARNESSES))
+    if invalid:
+        raise LifecycleError(f"unknown harnesses: {', '.join(invalid)}")
+    return sorted(harnesses)
+
+
+def validate_profiles(source: Source, profiles: list[str]) -> list[str]:
+    available = source.manifest.get("profiles", {})
+    invalid = sorted(set(profiles) - set(available))
+    if invalid:
+        raise LifecycleError(f"unknown profiles: {', '.join(invalid)}")
+    return sorted(profiles)
+
+
+def selected_skills(
+    source: Source, profiles: list[str], workflow_foundations: bool
+) -> list[dict[str, Any]]:
+    categories: set[str] = set()
+    explicit: set[str] = set()
+    profile_config = source.manifest.get("profiles", {})
+    for profile in profiles:
+        definition = profile_config[profile]
+        categories.update(definition.get("categories", []))
+        explicit.update(definition.get("skills", []))
+    if workflow_foundations:
+        categories.add("Manual workflow foundations")
+
+    skills = []
+    for skill in source.catalog.get("skills", []):
+        if skill.get("category") in categories or skill.get("name") in explicit:
+            skills.append(skill)
+    return sorted(skills, key=lambda skill: str(skill.get("name", "")))
+
+
+def desired_artifacts(
+    source: Source, desired: dict[str, Any], include_manager: bool = True
+) -> list[Artifact]:
+    harnesses = desired["harnesses"]
+    features = desired["features"]
+    skills = selected_skills(
+        source,
+        desired["profiles"],
+        bool(features.get("workflow_foundations")),
+    )
+    artifacts: dict[str, Artifact] = {}
+
+    for skill in skills:
+        name = str(skill["name"])
+        catalog_path = Path(str(skill["path"]))
+        if (
+            not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name)
+            or catalog_path.is_absolute()
+            or ".." in catalog_path.parts
+            or not catalog_path.parts
+            or catalog_path.parts[0] != "skills"
+            or catalog_path.name != "SKILL.md"
+            or catalog_path.parent.name != name
+        ):
+            raise LifecycleError(
+                f"catalog skill has an invalid package path: {name!r}"
+            )
+        skill_file = source.root / catalog_path
+        skill_root = source_artifact(source.root, skill_file.parent)
+        if "claude" in harnesses:
+            relative = f".claude/skills/{name}"
+            artifacts[relative] = Artifact(
+                skill_root, relative, str(skill_file.parent.relative_to(source.root))
+            )
+        if "codex" in harnesses or "opencode" in harnesses:
+            relative = f".agents/skills/{name}"
+            artifacts[relative] = Artifact(
+                skill_root, relative, str(skill_file.parent.relative_to(source.root))
+            )
+
+    if features.get("agents"):
+        if "claude" in harnesses:
+            for path in sorted((source.root / "agents").glob("*.md")):
+                if path.name == "README.md":
+                    continue
+                path = source_artifact(source.root, path)
+                relative = f".claude/agents/{path.name}"
+                artifacts[relative] = Artifact(
+                    path, relative, str(path.relative_to(source.root))
+                )
+        if "codex" in harnesses:
+            for path in sorted((source.root / "agents/codex").glob("*.toml")):
+                path = source_artifact(source.root, path)
+                relative = f".codex/agents/{path.name}"
+                artifacts[relative] = Artifact(
+                    path, relative, str(path.relative_to(source.root))
+                )
+        if "opencode" in harnesses:
+            for path in sorted((source.root / "agents/opencode").glob("*.md")):
+                if path.name == "README.md":
+                    continue
+                path = source_artifact(source.root, path)
+                relative = f".opencode/agents/{path.name}"
+                artifacts[relative] = Artifact(
+                    path, relative, str(path.relative_to(source.root))
+                )
+
+    if include_manager:
+        packaged_manager = source.root / "scripts" / "ai_onboard.py"
+        manager = (
+            packaged_manager
+            if packaged_manager.is_file()
+            else Path(__file__).resolve()
+        )
+        if packaged_manager.is_file():
+            manager = source_artifact(source.root, manager)
+        relative = f"{STATE_DIR}/bin/ai_onboard.py"
+        artifacts[relative] = Artifact(manager, relative, "scripts/ai_onboard.py")
+
+    return [artifacts[key] for key in sorted(artifacts)]
+
+
+def desired_configs(source: Source, desired: dict[str, Any]) -> list[tuple[str, str, Path]]:
+    if not desired["features"].get("configs"):
+        return []
+    result: list[tuple[str, str, Path]] = []
+    harnesses = desired["harnesses"]
+    if "claude" in harnesses:
+        result.append(
+            (
+                ".claude/settings.json",
+                "json",
+                source.root / "templates/configs/claude.settings.json",
+            )
+        )
+    if "codex" in harnesses:
+        result.append(
+            (
+                ".codex/config.toml",
+                "toml",
+                source.root / "templates/configs/codex.config.toml",
+            )
+        )
+    if "opencode" in harnesses:
+        result.append(
+            (
+                "opencode.json",
+                "json",
+                source.root / "templates/configs/opencode.json",
+            )
+        )
+    return [
+        (relative, config_format, source_artifact(source.root, template))
+        for relative, config_format, template in result
+    ]
+
+
+def pointer(parts: tuple[str, ...]) -> str:
+    return "/" + "/".join(part.replace("~", "~0").replace("/", "~1") for part in parts)
+
+
+def pointer_parts(value: str) -> tuple[str, ...]:
+    if not value.startswith("/"):
+        raise LifecycleError(f"invalid managed JSON pointer {value!r}")
+    if value == "/":
+        return ()
+    return tuple(
+        part.replace("~1", "/").replace("~0", "~")
+        for part in value.removeprefix("/").split("/")
+    )
+
+
+def get_nested(value: dict[str, Any], parts: tuple[str, ...]) -> tuple[bool, Any]:
+    current: Any = value
+    for part in parts:
+        if not isinstance(current, dict) or part not in current:
+            return False, None
+        current = current[part]
+    return True, current
+
+
+def set_nested(value: dict[str, Any], parts: tuple[str, ...], new_value: Any) -> None:
+    current = value
+    for part in parts[:-1]:
+        child = current.get(part)
+        if not isinstance(child, dict):
+            child = {}
+            current[part] = child
+        current = child
+    current[parts[-1]] = copy.deepcopy(new_value)
+
+
+def delete_nested(value: dict[str, Any], parts: tuple[str, ...]) -> None:
+    parents: list[tuple[dict[str, Any], str]] = []
+    current = value
+    for part in parts[:-1]:
+        child = current.get(part)
+        if not isinstance(child, dict):
+            return
+        parents.append((current, part))
+        current = child
+    current.pop(parts[-1], None)
+    for parent, key in reversed(parents):
+        child = parent.get(key)
+        if isinstance(child, dict) and not child:
+            parent.pop(key, None)
+
+
+def flatten_config(
+    value: dict[str, Any], prefix: tuple[str, ...] = ()
+) -> list[tuple[tuple[str, ...], Any]]:
+    result: list[tuple[tuple[str, ...], Any]] = []
+    for key, child in value.items():
+        parts = prefix + (str(key),)
+        if isinstance(child, dict):
+            result.extend(flatten_config(child, parts))
+        else:
+            result.append((parts, child))
+    return result
+
+
+def merge_json_config(
+    path: Path,
+    desired_value: dict[str, Any],
+    previous_records: list[dict[str, Any]],
+    dry_run: bool,
+) -> list[dict[str, Any]]:
+    current = read_json(path) if path.is_file() else {}
+    previous = {record["pointer"]: record for record in previous_records}
+    next_records: list[dict[str, Any]] = []
+    wanted_keys = {
+        pointer(parts) for parts, _ in flatten_config(desired_value)
+    }
+
+    for parts, wanted in flatten_config(desired_value):
+        key = pointer(parts)
+        exists, present = get_nested(current, parts)
+        prior = previous.get(key)
+        if prior and prior.get("ownership") == "adopted":
+            next_records.append(prior)
+            continue
+        if isinstance(wanted, list):
+            if not exists:
+                set_nested(current, parts, wanted)
+                next_records.append(
+                    {
+                        "pointer": key,
+                        "kind": "list_items",
+                        "items": copy.deepcopy(wanted),
+                        "ownership": "owned",
+                    }
+                )
+            elif (
+                prior
+                and prior.get("kind") == "value"
+                and present == prior.get("value")
+            ):
+                set_nested(current, parts, wanted)
+                next_records.append(
+                    {
+                        "pointer": key,
+                        "kind": "list_items",
+                        "items": copy.deepcopy(wanted),
+                        "ownership": prior.get("ownership", "owned"),
+                    }
+                )
+            elif isinstance(present, list):
+                old_items = (
+                    prior.get("items", [])
+                    if prior and prior.get("kind") == "list_items"
+                    else prior.get("value", [])
+                    if prior and isinstance(prior.get("value"), list)
+                    else []
+                )
+                if not prior or prior.get("ownership", "owned") == "owned":
+                    for item in old_items:
+                        if item not in wanted and item in present:
+                            present.remove(item)
+                retained = [item for item in old_items if item in present and item in wanted]
+                added = [item for item in wanted if item not in present]
+                if added:
+                    present.extend(copy.deepcopy(added))
+                managed_items = retained + [item for item in added if item not in retained]
+                if managed_items:
+                    next_records.append(
+                        {
+                            "pointer": key,
+                            "kind": "list_items",
+                            "items": managed_items,
+                            "ownership": prior.get("ownership", "owned")
+                            if prior
+                            else "owned",
+                        }
+                    )
+            continue
+
+        if prior and prior.get("kind") == "value":
+            if exists and present == prior.get("value"):
+                set_nested(current, parts, wanted)
+                next_records.append(
+                    {
+                        "pointer": key,
+                        "kind": "value",
+                        "value": copy.deepcopy(wanted),
+                        "ownership": prior.get("ownership", "owned"),
+                    }
+                )
+            else:
+                next_records.append(prior)
+        elif not exists:
+            set_nested(current, parts, wanted)
+            next_records.append(
+                {
+                    "pointer": key,
+                    "kind": "value",
+                    "value": copy.deepcopy(wanted),
+                    "ownership": "owned",
+                }
+            )
+
+    for key, prior in previous.items():
+        if key in wanted_keys or prior.get("ownership") == "adopted":
+            continue
+        parts = pointer_parts(key)
+        exists, present = get_nested(current, parts)
+        if prior.get("kind") == "value":
+            if exists and present == prior.get("value"):
+                delete_nested(current, parts)
+            elif exists:
+                next_records.append(prior)
+        elif prior.get("kind") == "list_items" and isinstance(present, list):
+            for item in prior.get("items", []):
+                if item in present:
+                    present.remove(item)
+
+    write_json(path, current, dry_run)
+    return next_records
+
+
+def toml_value(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, str):
+        return json.dumps(value)
+    if isinstance(value, list):
+        return "[" + ", ".join(toml_value(item) for item in value) + "]"
+    raise LifecycleError(f"unsupported TOML value {value!r}")
+
+
+def toml_table_name(line: str) -> str | None:
+    match = re.match(r"^\s*\[\s*(.+?)\s*\]\s*(?:#.*)?$", line)
+    if not match:
+        return None
+    name = match.group(1).strip()
+    if (
+        len(name) >= 2
+        and name[0] == name[-1]
+        and name[0] in {"'", '"'}
+    ):
+        return name[1:-1]
+    return name
+
+
+def set_toml_key(text: str, parts: tuple[str, ...], value: Any) -> str:
+    if len(parts) == 1:
+        section = ""
+        key = parts[0]
+    elif len(parts) == 2:
+        section, key = parts
+    else:
+        raise LifecycleError(f"unsupported nested TOML key {'.'.join(parts)}")
+    lines = text.splitlines()
+    start = 0
+    end = len(lines)
+    if section:
+        heading_text = f"[{section}]"
+        try:
+            start = next(
+                i
+                for i, line in enumerate(lines)
+                if toml_table_name(line) == section
+            ) + 1
+        except StopIteration:
+            if lines and lines[-1].strip():
+                lines.append("")
+            lines.extend([heading_text, f"{key} = {toml_value(value)}"])
+            return "\n".join(lines) + "\n"
+        end = next(
+            (
+                i
+                for i in range(start, len(lines))
+                if toml_table_name(lines[i]) is not None
+            ),
+            len(lines),
+        )
+    pattern = re.compile(rf"^\s*{re.escape(key)}\s*=")
+    for index in range(start, end):
+        if pattern.match(lines[index]):
+            lines[index] = f"{key} = {toml_value(value)}"
+            return "\n".join(lines) + "\n"
+    lines.insert(end, f"{key} = {toml_value(value)}")
+    return "\n".join(lines) + "\n"
+
+
+def remove_toml_key(text: str, parts: tuple[str, ...]) -> str:
+    section = parts[0] if len(parts) == 2 else ""
+    key = parts[-1]
+    lines = text.splitlines()
+    in_section = not section
+    pattern = re.compile(rf"^\s*{re.escape(key)}\s*=")
+    result = []
+    for line in lines:
+        table = toml_table_name(line)
+        if table is not None:
+            in_section = table == section
+        if in_section and pattern.match(line):
+            continue
+        result.append(line)
+    return "\n".join(result).rstrip() + "\n"
+
+
+def merge_toml_config(
+    path: Path,
+    desired_value: dict[str, Any],
+    previous_records: list[dict[str, Any]],
+    dry_run: bool,
+) -> list[dict[str, Any]]:
+    text = path.read_text(encoding="utf-8") if path.is_file() else ""
+    try:
+        current = tomllib.loads(text)
+    except tomllib.TOMLDecodeError as exc:
+        raise LifecycleError(f"cannot merge invalid TOML {path}: {exc}") from exc
+    previous = {record["pointer"]: record for record in previous_records}
+    next_records: list[dict[str, Any]] = []
+    wanted_keys = {
+        pointer(parts) for parts, _ in flatten_config(desired_value)
+    }
+    for parts, wanted in flatten_config(desired_value):
+        key = pointer(parts)
+        exists, present = get_nested(current, parts)
+        prior = previous.get(key)
+        if prior and prior.get("ownership") == "adopted":
+            next_records.append(prior)
+        elif prior and exists and present == prior.get("value"):
+            text = set_toml_key(text, parts, wanted)
+            set_nested(current, parts, wanted)
+            next_records.append(
+                {
+                    "pointer": key,
+                    "kind": "value",
+                    "value": wanted,
+                    "ownership": prior.get("ownership", "owned"),
+                }
+            )
+        elif prior:
+            next_records.append(prior)
+        elif not exists:
+            text = set_toml_key(text, parts, wanted)
+            set_nested(current, parts, wanted)
+            next_records.append(
+                {
+                    "pointer": key,
+                    "kind": "value",
+                    "value": wanted,
+                    "ownership": "owned",
+                }
+            )
+    for key, prior in previous.items():
+        if key in wanted_keys or prior.get("ownership") == "adopted":
+            continue
+        parts = pointer_parts(key)
+        exists, present = get_nested(current, parts)
+        if exists and present == prior.get("value"):
+            text = remove_toml_key(text, parts)
+            delete_nested(current, parts)
+        elif exists:
+            next_records.append(prior)
+    atomic_write(path, text, dry_run)
+    return next_records
+
+
+def apply_configs(
+    source: Source,
+    target: Path,
+    desired: dict[str, Any],
+    old_lock: dict[str, Any],
+    dry_run: bool,
+) -> list[dict[str, Any]]:
+    previous = {
+        record["path"]: record for record in old_lock.get("configs", [])
+    }
+    records: list[dict[str, Any]] = []
+    configured = desired_configs(source, desired)
+    configured_paths = {relative for relative, _, _ in configured}
+    for relative, config_format, template in configured:
+        prior = previous.get(relative, {})
+        prior_records = prior.get("managed", [])
+        path = managed_path(target, relative)
+        existed = path.is_file()
+        if config_format == "json":
+            wanted = read_json(template)
+            managed = merge_json_config(
+                path, wanted, prior_records, dry_run
+            )
+        else:
+            wanted = tomllib.loads(template.read_text(encoding="utf-8"))
+            managed = merge_toml_config(
+                path, wanted, prior_records, dry_run
+            )
+        records.append(
+            {
+                "path": relative,
+                "format": config_format,
+                "managed": managed,
+                "created": prior.get("created", not existed),
+            }
+        )
+        print(f"  config {relative}: merged {len(managed)} managed entries")
+    for relative, prior in previous.items():
+        if relative in configured_paths:
+            continue
+        remove_managed_config(target, prior, dry_run=dry_run, purge=False)
+        print(f"  config {relative}: removed obsolete managed entries")
+    return records
+
+
+def adopt_configs(
+    source: Source,
+    target: Path,
+    desired: dict[str, Any],
+) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    for relative, config_format, template in desired_configs(source, desired):
+        path = managed_path(target, relative)
+        if not path.is_file():
+            continue
+        if config_format == "json":
+            current = read_json(path)
+            wanted = read_json(template)
+        else:
+            try:
+                current = tomllib.loads(path.read_text(encoding="utf-8"))
+                wanted = tomllib.loads(template.read_text(encoding="utf-8"))
+            except tomllib.TOMLDecodeError as exc:
+                raise LifecycleError(f"cannot adopt invalid TOML {path}: {exc}") from exc
+        managed: list[dict[str, Any]] = []
+        for parts, value in flatten_config(wanted):
+            exists, present = get_nested(current, parts)
+            if isinstance(value, list) and exists and isinstance(present, list):
+                matching = [item for item in value if item in present]
+                if matching:
+                    managed.append(
+                        {
+                            "pointer": pointer(parts),
+                            "kind": "list_items",
+                            "items": matching,
+                            "ownership": "adopted",
+                        }
+                    )
+            elif exists and present == value:
+                managed.append(
+                    {
+                        "pointer": pointer(parts),
+                        "kind": "value",
+                        "value": copy.deepcopy(value),
+                        "ownership": "adopted",
+                    }
+                )
+        if managed:
+            records.append(
+                {
+                    "path": relative,
+                    "format": config_format,
+                    "managed": managed,
+                    "created": False,
+                }
+            )
+            print(f"  adopted {len(managed)} matching entries from {relative}")
+    return records
+
+
+def apply_artifact(
+    artifact: Artifact,
+    target: Path,
+    previous: dict[str, Any] | None,
+    *,
+    adopt_only: bool,
+    dry_run: bool,
+) -> dict[str, Any] | None:
+    destination = managed_path(target, artifact.destination)
+    incoming_hash = sha256_path(artifact.source)
+
+    if previous:
+        if not destination.exists() and not destination.is_symlink():
+            if previous.get("ownership") == "adopted":
+                print(f"  preserved missing adopted {artifact.destination}")
+                return previous
+            if adopt_only:
+                print(f"  missing {artifact.destination}: not adopted")
+                return None
+            copy_path(artifact.source, destination, dry_run)
+            print(f"  restored {artifact.destination}")
+            return {
+                "path": artifact.destination,
+                "source": artifact.source_label,
+                "sha256": incoming_hash,
+                "ownership": "owned",
+            }
+        current_hash = sha256_path(destination)
+        if previous.get("ownership") == "adopted":
+            if current_hash != incoming_hash and not adopt_only:
+                stage_conflict(artifact.source, target, artifact.destination, dry_run)
+                print(f"  conflict {artifact.destination}: preserved adopted file")
+            return previous
+        if current_hash == previous.get("sha256"):
+            if current_hash != incoming_hash and not adopt_only:
+                backup_path(target, artifact.destination, dry_run)
+                copy_path(artifact.source, destination, dry_run)
+                print(f"  upgraded {artifact.destination}")
+            return {
+                "path": artifact.destination,
+                "source": artifact.source_label,
+                "sha256": incoming_hash if not adopt_only else current_hash,
+                "ownership": previous.get("ownership", "owned"),
+            }
+        if incoming_hash == current_hash:
+            return {
+                "path": artifact.destination,
+                "source": artifact.source_label,
+                "sha256": current_hash,
+                "ownership": previous.get("ownership", "owned"),
+            }
+        if not adopt_only:
+            stage_conflict(artifact.source, target, artifact.destination, dry_run)
+            print(f"  conflict {artifact.destination}: preserved modified file")
+        else:
+            print(f"  different {artifact.destination}: not adopted")
+        return previous
+
+    if destination.exists() or destination.is_symlink():
+        current_hash = sha256_path(destination)
+        if current_hash == incoming_hash:
+            print(f"  adopted {artifact.destination}")
+            return {
+                "path": artifact.destination,
+                "source": artifact.source_label,
+                "sha256": current_hash,
+                "ownership": "adopted",
+            }
+        if not adopt_only:
+            stage_conflict(artifact.source, target, artifact.destination, dry_run)
+            print(f"  conflict {artifact.destination}: preserved existing file")
+        else:
+            print(f"  different {artifact.destination}: not adopted")
+        return None
+
+    if adopt_only:
+        return None
+    copy_path(artifact.source, destination, dry_run)
+    print(f"  installed {artifact.destination}")
+    return {
+        "path": artifact.destination,
+        "source": artifact.source_label,
+        "sha256": incoming_hash,
+        "ownership": "owned",
+    }
+
+
+def remove_obsolete_artifact(
+    target: Path, record: dict[str, Any], dry_run: bool
+) -> None:
+    destination = managed_path(target, str(record["path"]))
+    if not destination.exists() and not destination.is_symlink():
+        return
+    if record.get("ownership") != "owned":
+        print(f"  preserved adopted {record['path']}")
+        return
+    if sha256_path(destination) != record.get("sha256"):
+        print(f"  preserved modified {record['path']}")
+        return
+    if not dry_run:
+        remove_path(destination)
+    print(f"  removed obsolete {record['path']}")
+
+
+def build_desired(
+    source: Source,
+    harnesses: list[str],
+    profiles: list[str],
+    *,
+    agents: bool,
+    configs: bool,
+    workflow_foundations: bool,
+) -> dict[str, Any]:
+    repository = str(
+        source.manifest.get("repository", DEFAULT_REPOSITORY)
+    )
+    channel = str(source.manifest.get("default_channel", "stable"))
+    return {
+        "schema": SCHEMA,
+        "source": {"repository": repository, "channel": channel},
+        "harnesses": validate_harnesses(harnesses),
+        "profiles": validate_profiles(source, profiles),
+        "features": {
+            "agents": agents,
+            "configs": configs,
+            "workflow_foundations": workflow_foundations,
+        },
+    }
+
+
+def load_desired(target: Path) -> dict[str, Any]:
+    path = managed_path(target, DESIRED_NAME)
+    if not path.is_file():
+        raise LifecycleError(f"{DESIRED_NAME} is missing; run install or adopt")
+    desired = read_json(path)
+    if desired.get("schema") != SCHEMA:
+        raise LifecycleError(
+            f"unsupported desired-state schema {desired.get('schema')!r}"
+        )
+    return desired
+
+
+def load_lock(target: Path) -> dict[str, Any]:
+    path = managed_path(target, LOCK_NAME)
+    if not path.is_file():
+        return {"schema": SCHEMA, "artifacts": [], "configs": []}
+    lock = read_json(path)
+    if lock.get("schema") != SCHEMA:
+        raise LifecycleError(f"unsupported lock schema {lock.get('schema')!r}")
+    artifacts = lock.get("artifacts", [])
+    configs = lock.get("configs", [])
+    if not isinstance(artifacts, list) or not isinstance(configs, list):
+        raise LifecycleError("lock artifacts and configs must be lists")
+    for record in artifacts:
+        if not isinstance(record, dict):
+            raise LifecycleError("lock artifact entries must be objects")
+        relative = record.get("path")
+        if not isinstance(relative, str) or not any(
+            pattern.fullmatch(relative)
+            for pattern in MANAGED_ARTIFACT_PATTERNS
+        ):
+            raise LifecycleError(
+                f"lock artifact path is outside managed namespaces: {relative!r}"
+            )
+        if not re.fullmatch(r"[0-9a-f]{64}", str(record.get("sha256", ""))):
+            raise LifecycleError(f"lock artifact has invalid checksum: {relative}")
+        if record.get("ownership") not in {"owned", "adopted"}:
+            raise LifecycleError(f"lock artifact has invalid ownership: {relative}")
+    for config in configs:
+        if not isinstance(config, dict):
+            raise LifecycleError("lock config entries must be objects")
+        relative = config.get("path")
+        allowed = ALLOWED_CONFIG_VALUES.get(str(relative))
+        expected_format = "toml" if relative == ".codex/config.toml" else "json"
+        if allowed is None or config.get("format") != expected_format:
+            raise LifecycleError(
+                f"lock config path is outside managed destinations: {relative!r}"
+            )
+        managed = config.get("managed", [])
+        if not isinstance(managed, list):
+            raise LifecycleError(f"lock config has invalid managed entries: {relative}")
+        for entry in managed:
+            if not isinstance(entry, dict):
+                raise LifecycleError(f"lock config entry is invalid: {relative}")
+            key = entry.get("pointer")
+            if key not in allowed:
+                raise LifecycleError(
+                    f"lock config pointer is not managed: {relative}{key}"
+                )
+            approved = allowed[str(key)]
+            if entry.get("kind") == "value":
+                recorded = entry.get("value")
+                valid_value = (
+                    isinstance(approved, list)
+                    and isinstance(recorded, list)
+                    and all(item in approved for item in recorded)
+                ) or (
+                    not isinstance(approved, list)
+                    and recorded == approved
+                )
+            elif entry.get("kind") == "list_items":
+                items = entry.get("items")
+                valid_value = (
+                    isinstance(approved, list)
+                    and isinstance(items, list)
+                    and all(item in approved for item in items)
+                )
+            else:
+                valid_value = False
+            if not valid_value or entry.get("ownership", "owned") not in {
+                "owned",
+                "adopted",
+            }:
+                raise LifecycleError(
+                    f"lock config entry is invalid: {relative}{key}"
+                )
+    return lock
+
+
+def ensure_state_gitignore(target: Path, dry_run: bool) -> None:
+    atomic_write(
+        managed_path(target, f"{STATE_DIR}/.gitignore"),
+        "*\n!.gitignore\n",
+        dry_run,
+    )
+
+
+def preflight_configs(
+    source: Source,
+    target: Path,
+    desired: dict[str, Any],
+    old_lock: dict[str, Any],
+) -> None:
+    configured = desired_configs(source, desired)
+    formats = {
+        relative: config_format
+        for relative, config_format, _ in configured
+    }
+    for relative, config_format, template in configured:
+        if config_format == "json":
+            read_json(template)
+        else:
+            try:
+                tomllib.loads(template.read_text(encoding="utf-8"))
+            except tomllib.TOMLDecodeError as exc:
+                raise LifecycleError(
+                    f"cannot read package TOML {template}: {exc}"
+                ) from exc
+    for previous in old_lock.get("configs", []):
+        formats.setdefault(str(previous["path"]), str(previous["format"]))
+    for relative, config_format in formats.items():
+        path = managed_path(target, relative)
+        if path.is_symlink() or (path.exists() and not path.is_file()):
+            raise LifecycleError(
+                f"config destination is not a regular file: {path}"
+            )
+        if not path.is_file():
+            continue
+        if config_format == "json":
+            read_json(path)
+        else:
+            try:
+                tomllib.loads(path.read_text(encoding="utf-8"))
+            except tomllib.TOMLDecodeError as exc:
+                raise LifecycleError(f"cannot merge invalid TOML {path}: {exc}") from exc
+
+
+def reconcile(
+    source: Source,
+    target: Path,
+    desired: dict[str, Any],
+    *,
+    adopt_only: bool = False,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    old_lock = load_lock(target)
+    preflight_configs(source, target, desired, old_lock)
+    previous = {
+        record["path"]: record for record in old_lock.get("artifacts", [])
+    }
+    wanted_artifacts = desired_artifacts(
+        source, desired, include_manager=not adopt_only
+    )
+    wanted_paths = {artifact.destination for artifact in wanted_artifacts}
+    records: list[dict[str, Any]] = []
+    for artifact in wanted_artifacts:
+        record = apply_artifact(
+            artifact,
+            target,
+            previous.get(artifact.destination),
+            adopt_only=adopt_only,
+            dry_run=dry_run,
+        )
+        if record:
+            records.append(record)
+
+    if not adopt_only:
+        for relative, record in previous.items():
+            if relative not in wanted_paths:
+                remove_obsolete_artifact(target, record, dry_run)
+        configs = apply_configs(source, target, desired, old_lock, dry_run)
+    else:
+        configs = adopt_configs(source, target, desired)
+
+    lock = {
+        "schema": SCHEMA,
+        "package_version": source.manifest["version"],
+        "source_revision": source.revision,
+        "source_digest": source.content_digest,
+        "resolved_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "artifacts": records,
+        "configs": configs,
+    }
+    ensure_state_gitignore(target, dry_run)
+    write_json(managed_path(target, DESIRED_NAME), desired, dry_run)
+    write_json(managed_path(target, LOCK_NAME), lock, dry_run)
+    return lock
+
+
+def uninstall_json_config(
+    path: Path,
+    records: list[dict[str, Any]],
+    dry_run: bool,
+    purge: bool,
+) -> None:
+    if not path.is_file():
+        return
+    current = read_json(path)
+    for record in reversed(records):
+        if record.get("ownership") == "adopted" and not purge:
+            continue
+        parts = pointer_parts(record["pointer"])
+        exists, present = get_nested(current, parts)
+        if not exists:
+            continue
+        if record.get("kind") == "value" and present == record.get("value"):
+            delete_nested(current, parts)
+        elif record.get("kind") == "list_items" and isinstance(present, list):
+            for item in record.get("items", []):
+                if item in present:
+                    present.remove(item)
+            if not present:
+                delete_nested(current, parts)
+    write_json(path, current, dry_run)
+
+
+def uninstall_toml_config(
+    path: Path,
+    records: list[dict[str, Any]],
+    dry_run: bool,
+    purge: bool,
+) -> None:
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8")
+    try:
+        current = tomllib.loads(text)
+    except tomllib.TOMLDecodeError as exc:
+        raise LifecycleError(f"cannot uninstall from invalid TOML {path}: {exc}") from exc
+    for record in reversed(records):
+        if record.get("ownership") == "adopted" and not purge:
+            continue
+        parts = pointer_parts(record["pointer"])
+        exists, present = get_nested(current, parts)
+        if exists and present == record.get("value"):
+            text = remove_toml_key(text, parts)
+            delete_nested(current, parts)
+    atomic_write(path, text, dry_run)
+
+
+def config_has_values(value: Any) -> bool:
+    if isinstance(value, dict):
+        return any(config_has_values(child) for child in value.values())
+    return True
+
+
+def remove_managed_config(
+    target: Path,
+    config: dict[str, Any],
+    *,
+    dry_run: bool,
+    purge: bool,
+) -> None:
+    path = managed_path(target, str(config["path"]))
+    if config.get("format") == "json":
+        uninstall_json_config(
+            path, config.get("managed", []), dry_run, purge
+        )
+        if (
+            config.get("created")
+            and path.is_file()
+            and not read_json(path)
+            and not dry_run
+        ):
+            path.unlink()
+    else:
+        uninstall_toml_config(
+            path, config.get("managed", []), dry_run, purge
+        )
+        if config.get("created") and path.is_file() and not dry_run:
+            parsed = tomllib.loads(path.read_text(encoding="utf-8"))
+            if not config_has_values(parsed):
+                path.unlink()
+
+
+def command_install(args: argparse.Namespace, source: Source, target: Path) -> int:
+    if not managed_path(target, "AGENTS.md").is_file():
+        raise LifecycleError(
+            "AGENTS.md is missing; start from AI_ONBOARD/templates/AGENTS.md"
+        )
+    harnesses = split_csv(args.harness) or list(SUPPORTED_HARNESSES)
+    profiles = split_csv(args.profile) or ["core"]
+    desired = build_desired(
+        source,
+        harnesses,
+        profiles,
+        agents=args.agents,
+        configs=args.configs,
+        workflow_foundations=args.workflow_foundations,
+    )
+    print(
+        f"Installing AI_ONBOARD {source.manifest['version']} "
+        f"for {', '.join(desired['harnesses'])}"
+    )
+    reconcile(source, target, desired, dry_run=args.dry_run)
+    return 0
+
+
+def command_adopt(args: argparse.Namespace, source: Source, target: Path) -> int:
+    if not managed_path(target, "AGENTS.md").is_file():
+        raise LifecycleError(
+            "AGENTS.md is missing; adoption requires the project's shared contract"
+        )
+    harnesses = split_csv(args.harness) or list(SUPPORTED_HARNESSES)
+    profiles = split_csv(args.profile) or ["core"]
+    desired = build_desired(
+        source,
+        harnesses,
+        profiles,
+        agents=args.agents,
+        configs=args.configs,
+        workflow_foundations=args.workflow_foundations,
+    )
+    print("Adopting exact existing AI_ONBOARD artifacts; no product files are changed")
+    reconcile(source, target, desired, adopt_only=True, dry_run=args.dry_run)
+    return 0
+
+
+def command_sync(
+    args: argparse.Namespace, source: Source, target: Path, label: str = "Syncing"
+) -> int:
+    desired = load_desired(target)
+    validate_harnesses(list(desired.get("harnesses", [])))
+    validate_profiles(source, list(desired.get("profiles", [])))
+    print(f"{label} AI_ONBOARD {source.manifest['version']}")
+    reconcile(source, target, desired, dry_run=args.dry_run)
+    return 0
+
+
+def command_status(target: Path, verbose: bool = False) -> int:
+    desired_exists = managed_path(target, DESIRED_NAME).is_file()
+    lock_exists = managed_path(target, LOCK_NAME).is_file()
+    if not desired_exists or not lock_exists:
+        print("AI_ONBOARD is not fully managed in this project")
+        return 1
+    lock = load_lock(target)
+    drift = 0
+    clean = 0
+    print(
+        f"AI_ONBOARD {lock.get('package_version', 'unknown')} "
+        f"({lock.get('source_revision', 'unknown')})"
+    )
+    for record in lock.get("artifacts", []):
+        path = managed_path(target, str(record["path"]))
+        if not path.exists() and not path.is_symlink():
+            print(f"  missing  {record['path']}")
+            drift += 1
+        elif sha256_path(path) != record.get("sha256"):
+            print(f"  modified {record['path']}")
+            drift += 1
+        else:
+            clean += 1
+            if verbose:
+                print(f"  clean    {record['path']}")
+    for config in lock.get("configs", []):
+        path = managed_path(target, str(config["path"]))
+        config_drift = False
+        if not path.is_file():
+            config_drift = True
+        else:
+            try:
+                current = (
+                    read_json(path)
+                    if config.get("format") == "json"
+                    else tomllib.loads(path.read_text(encoding="utf-8"))
+                )
+            except (LifecycleError, OSError, tomllib.TOMLDecodeError):
+                config_drift = True
+            else:
+                for entry in config.get("managed", []):
+                    exists, present = get_nested(
+                        current, pointer_parts(entry["pointer"])
+                    )
+                    if entry.get("kind") == "value":
+                        matches = exists and present == entry.get("value")
+                    else:
+                        matches = (
+                            exists
+                            and isinstance(present, list)
+                            and all(
+                                item in present
+                                for item in entry.get("items", [])
+                            )
+                        )
+                    if not matches:
+                        config_drift = True
+                        break
+        if config_drift:
+            print(f"  modified config {config['path']}")
+            drift += 1
+        else:
+            clean += 1
+            if verbose:
+                print(f"  clean    config {config['path']}")
+    print(f"Status: {clean} clean, {drift} drifted managed item(s)")
+    return 1 if drift else 0
+
+
+def command_doctor(target: Path) -> int:
+    issues = 0
+    try:
+        desired = load_desired(target)
+        validate_harnesses(list(desired.get("harnesses", [])))
+    except LifecycleError as exc:
+        print(f"  error: {exc}")
+        issues += 1
+    try:
+        load_lock(target)
+    except LifecycleError as exc:
+        print(f"  error: {exc}")
+        issues += 1
+    status = command_status(target)
+    issues += status
+    conflicts = managed_path(target, f"{STATE_DIR}/conflicts")
+    if conflicts.is_dir() and any(path.is_file() for path in conflicts.rglob("*")):
+        print(f"  warning: unresolved conflicts in {conflicts}")
+    if issues:
+        print(f"Doctor found {issues} issue(s)")
+        return 1
+    print("Doctor passed")
+    return 0
+
+
+def command_uninstall(args: argparse.Namespace, target: Path) -> int:
+    lock = load_lock(target)
+    for config in lock.get("configs", []):
+        path = managed_path(target, str(config["path"]))
+        if not path.is_file():
+            continue
+        if config.get("format") == "json":
+            read_json(path)
+        else:
+            try:
+                tomllib.loads(path.read_text(encoding="utf-8"))
+            except tomllib.TOMLDecodeError as exc:
+                raise LifecycleError(
+                    f"cannot uninstall from invalid TOML {path}: {exc}"
+                ) from exc
+    print("Uninstalling managed AI_ONBOARD artifacts")
+    for record in sorted(
+        lock.get("artifacts", []),
+        key=lambda item: len(str(item.get("path", ""))),
+        reverse=True,
+    ):
+        destination = managed_path(target, str(record["path"]))
+        if not destination.exists() and not destination.is_symlink():
+            continue
+        ownership = record.get("ownership")
+        unchanged = sha256_path(destination) == record.get("sha256")
+        if ownership == "owned" and unchanged:
+            if not args.dry_run:
+                remove_path(destination)
+            print(f"  removed {record['path']}")
+        elif ownership == "adopted" and unchanged and args.purge:
+            if not args.dry_run:
+                remove_path(destination)
+            print(f"  purged adopted {record['path']}")
+        elif not unchanged:
+            print(f"  preserved modified {record['path']}")
+        else:
+            print(f"  preserved adopted {record['path']}")
+
+    for config in lock.get("configs", []):
+        remove_managed_config(
+            target,
+            config,
+            dry_run=args.dry_run,
+            purge=args.purge,
+        )
+        print(f"  removed unchanged managed keys from {config['path']}")
+
+    if not args.dry_run:
+        managed_path(target, LOCK_NAME).unlink(missing_ok=True)
+        if args.purge:
+            managed_path(target, DESIRED_NAME).unlink(missing_ok=True)
+    print(
+        "Desired state preserved; use --purge to remove it"
+        if not args.purge
+        else "Managed desired state purged"
+    )
+    return 0
+
+
+def command_cleanup(args: argparse.Namespace, target: Path) -> int:
+    backups = managed_path(target, f"{STATE_DIR}/backups")
+    releases = sorted(
+        [path for path in backups.iterdir() if path.is_dir()]
+        if backups.is_dir()
+        else []
+    )
+    remove = releases[: max(0, len(releases) - args.keep_releases)]
+    for path in remove:
+        if not args.dry_run:
+            shutil.rmtree(path)
+        print(f"  removed backup {path.name}")
+    print(f"Cleanup kept {min(len(releases), args.keep_releases)} backup set(s)")
+    return 0
+
+
+def command_profile(
+    args: argparse.Namespace, source: Source, target: Path
+) -> int:
+    desired = load_desired(target)
+    profiles = list(desired.get("profiles", []))
+    available = source.manifest.get("profiles", {})
+    if args.name not in available:
+        raise LifecycleError(f"unknown profile {args.name!r}")
+    if args.action == "add" and args.name not in profiles:
+        profiles.append(args.name)
+    elif args.action == "remove" and args.name in profiles:
+        profiles.remove(args.name)
+    if not profiles:
+        raise LifecycleError("at least one profile must remain installed")
+    desired["profiles"] = sorted(profiles)
+    write_json(managed_path(target, DESIRED_NAME), desired, args.dry_run)
+    print(f"Profile {args.action}: {args.name}")
+    reconcile(source, target, desired, dry_run=args.dry_run)
+    return 0
+
+
+def add_install_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--harness",
+        action="append",
+        help="Comma-separated harnesses: claude,codex,opencode",
+    )
+    parser.add_argument(
+        "--profile",
+        action="append",
+        help="Comma-separated capability profiles (default: core)",
+    )
+    parser.add_argument("--agents", action="store_true")
+    parser.add_argument("--configs", action="store_true")
+    parser.add_argument("--workflow-foundations", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Install, upgrade, inspect, and remove AI_ONBOARD safely."
+    )
+    parser.add_argument("--target", default=".", help="Project root (default: .)")
+    parser.add_argument(
+        "--source",
+        help="AI_ONBOARD source checkout; otherwise use the local package or configured remote",
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    install = subparsers.add_parser("install")
+    add_install_options(install)
+    adopt = subparsers.add_parser("adopt")
+    add_install_options(adopt)
+
+    for name in ("sync", "upgrade"):
+        command = subparsers.add_parser(name)
+        command.add_argument("--check", action="store_true")
+        command.add_argument("--dry-run", action="store_true")
+
+    status = subparsers.add_parser("status")
+    status.add_argument("--verbose", action="store_true")
+    subparsers.add_parser("doctor")
+
+    uninstall = subparsers.add_parser("uninstall")
+    uninstall.add_argument("--purge", action="store_true")
+    uninstall.add_argument("--dry-run", action="store_true")
+
+    cleanup = subparsers.add_parser("cleanup")
+    cleanup.add_argument("--keep-releases", type=int, default=2)
+    cleanup.add_argument("--dry-run", action="store_true")
+
+    profile = subparsers.add_parser("profile")
+    profile.add_argument("action", choices=("add", "remove"))
+    profile.add_argument("name")
+    profile.add_argument("--dry-run", action="store_true")
+    return parser
+
+
+def main() -> int:
+    parser = build_parser()
+    args = parser.parse_args()
+    target = Path(args.target).resolve()
+
+    try:
+        if not target.is_dir():
+            raise LifecycleError(
+                f"target project directory does not exist: {target}"
+            )
+        if args.command == "status":
+            return command_status(target, args.verbose)
+        if args.command == "doctor":
+            return command_doctor(target)
+        if args.command == "uninstall":
+            return command_uninstall(args, target)
+        if args.command == "cleanup":
+            if args.keep_releases < 0:
+                raise LifecycleError("--keep-releases must be non-negative")
+            return command_cleanup(args, target)
+
+        use_locked = args.command in {"sync", "profile"} and not args.source
+        with resolve_source(
+            args.source, target, use_locked_revision=use_locked
+        ) as source:
+            if args.command == "install":
+                return command_install(args, source, target)
+            if args.command == "adopt":
+                return command_adopt(args, source, target)
+            if args.command == "profile":
+                return command_profile(args, source, target)
+            if args.command in {"sync", "upgrade"}:
+                old = load_lock(target)
+                if (
+                    args.command == "sync"
+                    and old.get("source_digest")
+                    and old.get("source_digest") != source.content_digest
+                ):
+                    raise LifecycleError(
+                        "locked source content does not match its recorded digest"
+                    )
+                changed = (
+                    old.get("package_version") != source.manifest.get("version")
+                    or old.get("source_revision") != source.revision
+                    or old.get("source_digest") != source.content_digest
+                )
+                if args.check:
+                    print(
+                        f"Update {'available' if changed else 'not needed'}: "
+                        f"{old.get('package_version', 'none')} -> "
+                        f"{source.manifest.get('version')}"
+                    )
+                    return 0
+                return command_sync(
+                    args,
+                    source,
+                    target,
+                    label="Upgrading" if args.command == "upgrade" else "Syncing",
+                )
+    except LifecycleError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -8,7 +8,7 @@ each tool looks for and how to redirect it to `AGENTS.md`. This table is the ref
 | Tool | Native file(s) | Reads `AGENTS.md`? | How to wire it to `AGENTS.md` |
 |------|----------------|:---:|-------------------------------|
 | **OpenAI Codex CLI** | `AGENTS.md` | ✅ native | Nothing to do. Also reads `~/.codex/AGENTS.md` (global) and nested files. |
-| **opencode** | `AGENTS.md` | ✅ native | Nothing to do. Legacy `.opencode` still honored; global at `~/.config/opencode/AGENTS.md`. |
+| **OpenCode** | `AGENTS.md` | ✅ native | Nothing to do. Legacy `.opencode` still honored; global at `~/.config/opencode/AGENTS.md`. |
 | **Cursor** | `.cursor/rules/*.mdc`, `.cursorrules` (legacy) | ✅ native | Reads `AGENTS.md`. Use `.cursor/rules/` only for Cursor-specific scoped/auto-attached rules. |
 | **Zed** | `AGENTS.md` | ✅ native | Nothing to do. |
 | **Jules** (Google) | `AGENTS.md` | ✅ native | Nothing to do. |
@@ -54,10 +54,15 @@ Keep the root file general and push specifics down into nested files rather than
 | Tool | Config / feature files | Purpose |
 |------|------------------------|---------|
 | Claude Code | `.claude/settings.json`, `.claude/commands/`, `.claude/agents/`, `.claude/skills/`, hooks | Permissions, slash commands, subagents, skills, lifecycle hooks |
-| Codex | `~/.codex/config.toml` | Model, approval mode, sandbox policy |
-| opencode | `opencode.json`, `.opencode/` | Providers, agents, MCP servers, themes |
+| Codex | `.codex/config.toml`, `~/.codex/config.toml`, `~/.codex/*.config.toml` | Project agent bounds; personal model, approval, sandbox, and named profiles |
+| OpenCode | `opencode.json`, `.opencode/agents/` | Permissions, compaction, providers, agents, MCP servers, themes |
 | Cursor | `.cursor/rules/*.mdc` | Scoped/auto-attached rules with glob triggers |
 | Gemini CLI | `.gemini/settings.json` | Context filename, tools, MCP |
 
 These are documented per-tool in [`setup/`](setup/). They stay out of `AGENTS.md` so the
 shared file remains portable across every harness.
+
+The starter configs in [`../templates/configs/`](../templates/configs/) cover Claude Code, Codex, and
+OpenCode. Install them with the [lifecycle manager](install-management.md), which merges only managed keys,
+records checksums, and supports safe upgrade and uninstall. `templates/link.sh --configs` remains a
+legacy copy path without lifecycle tracking.
