@@ -75,4 +75,5 @@ Or let [`../templates/link.sh`](../templates/link.sh) `--agents` do both (it alr
 
 Cross-cutting agents (`security-review`, `design-review`) run over the **diff**, across every path layer —
 they are reviewers, not directories. Keep their always-on rules (e.g. "never log secrets") in the **root**
-`AGENTS.md`.
+`AGENTS.md`. For a whole-codebase security pass (not a diff), `security-review` invokes the
+[`security-audit`](../skills/security-audit/) skill — see [`../docs/security-audit.md`](../docs/security-audit.md).

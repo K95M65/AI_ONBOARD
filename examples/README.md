@@ -17,6 +17,7 @@ Codex**. It demonstrates the whole stack in one place:
 | Claude Code perms | [`notes-app/.claude/settings.json`](notes-app/.claude/settings.json) | Allow the check commands; deny destructive ones |
 | Claude Code path rule | [`notes-app/.claude/rules/frontend.md`](notes-app/.claude/rules/frontend.md) | Path-scoped rule that loads only under `web/**` |
 | Codex wiring | [`notes-app/.codex/config.toml`](notes-app/.codex/config.toml) | Per-layer profiles (`--profile frontend` / `backend`) |
+| Security audit (worked) | [`notes-app/SECURITY-AUDIT.md`](notes-app/SECURITY-AUDIT.md) | Illustrative output of the `security-audit` skill |
 
 **Subagents** aren't duplicated here — install the repo's reference set:
 

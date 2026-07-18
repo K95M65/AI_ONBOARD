@@ -31,6 +31,7 @@ ln -s "$PWD/skills/dataviz" .agents/skills/dataviz
 | [`dataviz`](dataviz/) | Guidance for correct, readable, accessible charts — chart choice, color, a11y |
 | [`component-scaffold`](component-scaffold/) | Scaffolds a React/TS component (component + test + index) from templates |
 | [`prisma-migrate`](prisma-migrate/) | Safely creates + applies a Prisma migration; guards against non-local databases |
+| [`security-audit`](security-audit/) | Systematic whole-codebase security audit — threat model, category checklist, surface-scan |
 
 ## Authoring a new skill
 
