@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm test:*)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm build)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(pnpm db:reset*)",
+      "Read(./.env)"
+    ]
+  },
+  "env": {
+    "NODE_ENV": "test"
+  }
+}

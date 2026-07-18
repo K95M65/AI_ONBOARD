@@ -1,0 +1,28 @@
+# Codex config for notes-app.
+# AGENTS.md (root + web/ + api/) is read automatically — no wiring needed for conventions.
+# Codex can't auto-switch model by path, so layers are realized as profiles you select per session:
+#   codex --profile frontend      (working in web/)
+#   codex --profile backend       (working in api/)
+
+# Sensible project defaults.
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+# Frontend: fast, low-effort — high-volume UI work.
+[profiles.frontend]
+model_reasoning_effort = "low"
+sandbox_mode = "workspace-write"
+
+# Backend: strong, high-effort — auth, data, migrations.
+[profiles.backend]
+model_reasoning_effort = "high"
+sandbox_mode = "workspace-write"
+
+# Review: read-only — reviewers don't write.
+[profiles.review]
+model_reasoning_effort = "high"
+sandbox_mode = "read-only"
+
+# Note: profile *definition* form is version-dependent (inline tables vs separate
+# ~/.codex/<name>.config.toml files). See docs/setup/codex.md. Model names omitted on
+# purpose — reasoning-effort is portable across Codex versions; add `model = "..."` to pin.

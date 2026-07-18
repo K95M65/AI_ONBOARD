@@ -36,6 +36,7 @@ Codex, Claude Code, opencode, Cursor, Gemini CLI, Aider, Windsurf and friends ea
 | [`docs/skills.md`](docs/skills.md) | The Agent Skills format (`SKILL.md`) and how to author portable skills |
 | `docs/setup/` | Per-tool setup guides (Claude Code, Codex, opencode, Cursor, Gemini CLI) |
 | [`agents/`](agents/) | Reference subagents (researcher, reviewer, verifier, security/design lenses) |
+| [`examples/`](examples/) | Worked end-to-end setups — a full-stack monorepo wired for Claude Code + Codex |
 | `skills/` | A library of reusable, portable skills |
 | `templates/` | Drop-in starter files |
 
