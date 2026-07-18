@@ -32,6 +32,12 @@ ln -s "$PWD/skills/dataviz" .agents/skills/dataviz
 | [`component-scaffold`](component-scaffold/) | Scaffolds a React/TS component (component + test + index) from templates |
 | [`prisma-migrate`](prisma-migrate/) | Safely creates + applies a Prisma migration; guards against non-local databases |
 | [`security-audit`](security-audit/) | Systematic whole-codebase security audit — threat model, category checklist, surface-scan |
+| [`dependency-vuln-scan`](dependency-vuln-scan/) | Scans dependencies for known CVEs (npm/pnpm/yarn, Go, osv-scanner); degrades gracefully |
+| [`secret-scan`](secret-scan/) | Scans for committed secrets incl. git history (gitleaks/trufflehog, grep fallback) |
+| [`threat-model`](threat-model/) | STRIDE + data-flow threat model of a feature — design-time companion to `security-audit` |
+| [`cobra-command`](cobra-command/) | Scaffolds a Go Cobra subcommand + table-driven test (CLI counterpart to `component-scaffold`) |
+| [`pr-description`](pr-description/) | Writes a PR description from the branch's commits + diff |
+| [`changelog`](changelog/) | Rolls Conventional Commits since the last tag into release notes |
 
 ## Authoring a new skill
 

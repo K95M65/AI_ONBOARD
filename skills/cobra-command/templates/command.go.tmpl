@@ -1,0 +1,19 @@
+package main
+
+import "github.com/spf13/cobra"
+
+// new__CAP__Cmd builds the "__NAME__" subcommand. Keep it thin: parse flags,
+// delegate to internal/, format output — no business logic here.
+func new__CAP__Cmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "__NAME__",
+		Short:   "TODO: one-line description of __NAME__",
+		Example: "  todo __NAME__",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// TODO: call into internal/ and print the result.
+			return nil
+		},
+	}
+	// TODO: cmd.Flags().StringVar(...) for any flags.
+	return cmd
+}

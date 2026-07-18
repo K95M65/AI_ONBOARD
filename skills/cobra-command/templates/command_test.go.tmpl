@@ -1,0 +1,29 @@
+package main
+
+import "testing"
+
+func Test__CAP__Cmd(t *testing.T) {
+	cmd := new__CAP__Cmd()
+	if cmd.Use != "__NAME__" {
+		t.Fatalf("Use = %q, want %q", cmd.Use, "__NAME__")
+	}
+
+	// TODO: table-driven cases exercising RunE with different args/flags.
+	cases := []struct {
+		name    string
+		args    []string
+		wantErr bool
+	}{
+		{name: "no args", args: nil, wantErr: false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := new__CAP__Cmd()
+			cmd.SetArgs(tc.args)
+			err := cmd.Execute()
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("err = %v, wantErr = %v", err, tc.wantErr)
+			}
+		})
+	}
+}
