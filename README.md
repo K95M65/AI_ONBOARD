@@ -66,6 +66,12 @@ Codex, Claude Code, opencode, Cursor, Gemini CLI, Aider, Windsurf and friends ea
 
 This repo covers **project-level onboarding files** (what an agent should know when it opens your repo) and **portable skills** (reusable capabilities). It is intentionally tool-agnostic: tool-specific power features (Claude Code hooks, Codex `config.toml`, etc.) are documented in `docs/setup/` but kept *out* of the shared `AGENTS.md` so it stays portable.
 
+## License
+
+**MIT** — see [`LICENSE`](LICENSE). Free to use, copy, modify, and distribute; just keep the notice.
+
+The vendored Cloudflare skills in [`skills/cloudflare/`](skills/cloudflare/) are **Apache-2.0** (their upstream license) — see [`skills/cloudflare/NOTICE.md`](skills/cloudflare/NOTICE.md).
+
 ---
 
 *Status: active. Core docs, per-tool setup (Claude Code + Codex are the primary focus), the behavioral +
