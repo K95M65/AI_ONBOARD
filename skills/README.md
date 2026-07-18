@@ -1,22 +1,25 @@
 # Skills library
 
-Portable, reusable [Agent Skills](../docs/skills.md). Each folder is self-contained — copy it into any
-skills location and it works:
+Portable, reusable [Agent Skills](../docs/skills.md) — an open standard, so each folder works **as-is in both
+Claude Code and Codex** (and 30+ other tools). Copy or symlink a folder into a harness's skills directory:
 
-| Skill location | Scope |
-|----------------|-------|
-| `~/.claude/skills/<name>/` | Personal, all projects (Claude Code) |
-| `.claude/skills/<name>/` | Team-shared, committed to a repo (Claude Code) |
-| anywhere you run the scripts by hand | Any tool — the scripts are plain shell/Python |
+| Harness | Personal | Project (team-shared) |
+|---------|----------|-----------------------|
+| Claude Code | `~/.claude/skills/<name>/` | `.claude/skills/<name>/` |
+| Codex | `~/.agents/skills/<name>/` | `.agents/skills/<name>/` (vendor-neutral — **not** `.codex/skills`) |
 
 ## Installing a skill
 
 ```bash
-# personal
-cp -R skills/conventional-commit ~/.claude/skills/
+# Claude Code (project, team-shared)
+mkdir -p .claude/skills && cp -R skills/dataviz .claude/skills/
 
-# project (team-shared)
-mkdir -p .claude/skills && cp -R skills/conventional-commit .claude/skills/
+# Codex (project) — same folder, different directory
+mkdir -p .agents/skills && cp -R skills/dataviz .agents/skills/
+
+# Use it in both without duplicating: one canonical copy, symlinked into each tree
+ln -s "$PWD/skills/dataviz" .claude/skills/dataviz
+ln -s "$PWD/skills/dataviz" .agents/skills/dataviz
 ```
 
 ## Skills in this library
@@ -25,6 +28,9 @@ mkdir -p .claude/skills && cp -R skills/conventional-commit .claude/skills/
 |-------|--------------|
 | [`conventional-commit`](conventional-commit/) | Writes a Conventional Commits message from your staged changes |
 | [`agents-md-init`](agents-md-init/) | Bootstraps an `AGENTS.md` by detecting your project's stack and commands |
+| [`dataviz`](dataviz/) | Guidance for correct, readable, accessible charts — chart choice, color, a11y |
+| [`component-scaffold`](component-scaffold/) | Scaffolds a React/TS component (component + test + index) from templates |
+| [`prisma-migrate`](prisma-migrate/) | Safely creates + applies a Prisma migration; guards against non-local databases |
 
 ## Authoring a new skill
 

@@ -6,8 +6,10 @@ the agent sees a one-line description of every available skill up front, and pul
 (and any bundled scripts) only when it decides the skill is relevant. That keeps context cheap while giving
 the agent deep, on-demand expertise.
 
-Skills originate from Claude / Claude Code, but the format is plain files — a portable way to package a
-capability that other harnesses can adopt or that you can hand-run.
+Skills began at Anthropic but are now an **open, cross-vendor standard** ([agentskills.io](https://agentskills.io),
+Dec 2025): the *same* `SKILL.md` folder runs in **Claude Code and Codex** (and 30+ other tools) with no
+wrapper and no translation. That makes a skill the most portable artifact in this repo — author it once,
+install it into each harness's skills directory.
 
 ## Anatomy
 
@@ -67,16 +69,33 @@ these tool-specific extras minimal if you want the skill to stay portable.
 5. **Write instructions, not prose.** Numbered steps and exact commands. The agent is following, not reading.
 6. **Make it self-contained.** Bundle the templates and scripts it needs so it works dropped into any repo.
 
-## Where skills live (Claude Code)
+## Where skills live
 
-| Scope | Location | Use for |
-|-------|----------|---------|
-| Personal | `~/.claude/skills/<name>/` | Your own cross-project skills |
-| Project | `.claude/skills/<name>/` | Skills the whole team shares, committed to the repo |
-| Plugin | bundled in a plugin | Distributed skill packs |
+The same skill folder is discovered from different directories per harness:
 
-This repo's [`skills/`](../skills/) directory holds portable, reusable skills you can copy into any of the
-above.
+| Harness | Personal (all projects) | Project (team-shared) |
+|---------|-------------------------|-----------------------|
+| **Claude Code** | `~/.claude/skills/<name>/` | `.claude/skills/<name>/` |
+| **Codex** | `~/.agents/skills/<name>/` | `.agents/skills/<name>/` |
+
+> Codex uses the **vendor-neutral `.agents/skills/`** path — **not** `.codex/skills/` (a common third-party
+> error). It scans `.agents/skills` from the cwd up to the repo root, then `~/.agents/skills`.
+
+This repo's [`skills/`](../skills/) directory holds portable, reusable skills. Copy — or symlink — a folder
+into the paths above; a symlink from one canonical copy into both trees keeps them in sync with zero
+duplication.
+
+## Portable across harnesses — three things to get right
+
+1. **Keep frontmatter to the shared subset.** Only `name` + `description` are universal. Avoid tool-specific
+   frontmatter keys in `SKILL.md` if you want one file to serve both harnesses.
+2. **Make scripts self-locating.** Resolve paths relative to the script
+   (`SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"`), never the caller's cwd — the harness that
+   invokes the skill sets a different working directory. This is the one real portability gotcha.
+3. **Codex-only extras are optional and ignorable.** Codex supports an `agents/openai.yaml` sidecar (UI
+   metadata, `allow_implicit_invocation`) and a `[[skills.config]]` enable/disable list in its config. Claude
+   Code ignores the sidecar. Note: per-subagent `skills.config` scoping is currently unreliable in Codex
+   ([#14161](https://github.com/openai/codex/issues/14161)) — assume skills are **session-global** for now.
 
 ## Skills vs. AGENTS.md — when to use which
 

@@ -1,0 +1,10 @@
+import { render, screen } from '@testing-library/react';
+import { __NAME__ } from './__NAME__';
+
+describe('__NAME__', () => {
+  it('renders', () => {
+    render(<__NAME__ />);
+    // TODO: assert something meaningful about the output.
+    expect(screen.getByText('__NAME__')).toBeInTheDocument();
+  });
+});
