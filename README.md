@@ -13,12 +13,12 @@ Codex, Claude Code, opencode, Cursor, Gemini CLI, Aider, Windsurf and friends ea
                  │    AGENTS.md    │   ← you edit this, and only this
                  │ (source of truth)│
                  └────────┬────────┘
-          ┌───────────────┼───────────────┐
-          │               │               │
-     CLAUDE.md        GEMINI.md      .cursor/rules/…
-    (@import)        (symlink)        (symlink)
-          │               │               │
-     Claude Code      Gemini CLI       Cursor
+          ┌───────────────┼────────────────┐
+          │               │                │
+     CLAUDE.md        GEMINI.md      read natively
+    (@import)        (symlink)       (no wiring)
+          │               │                │
+     Claude Code      Gemini CLI   Codex · Cursor · opencode
 ```
 
 - **[AGENTS.md](https://agents.md)** is an open, tool-agnostic standard already read natively by Codex, opencode, Cursor, Jules, Zed, Aider, and 20k+ repos.
@@ -55,6 +55,9 @@ Codex, Claude Code, opencode, Cursor, Gemini CLI, Aider, Windsurf and friends ea
    # Codex / opencode / Cursor / Zed / Aider — read AGENTS.md natively, nothing to do
    ```
 
+   Or run [`templates/link.sh`](templates/link.sh) from your project root to wire all of these at once
+   (`--agents` also installs the reference subagents).
+
 3. Commit. Every agent now onboards from the same instructions.
 
 ## Scope
@@ -63,4 +66,5 @@ This repo covers **project-level onboarding files** (what an agent should know w
 
 ---
 
-*Status: bootstrapping. README + core docs first, then per-tool setup guides and the skills library.*
+*Status: active. Core docs, per-tool setup (Claude Code + Codex are the primary focus), the behavioral +
+delegation model, reference subagents, and a worked example are all in place.*

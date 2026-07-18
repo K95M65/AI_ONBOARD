@@ -22,8 +22,9 @@ Codex**. It demonstrates the whole stack in one place:
 
 ```bash
 # from the repo root
-cp agents/*.md        examples/notes-app/.claude/agents/    # Claude Code
-cp agents/codex/*.toml examples/notes-app/.codex/agents/    # Codex
+mkdir -p examples/notes-app/.claude/agents examples/notes-app/.codex/agents
+cp agents/*.md examples/notes-app/.claude/agents/ && rm examples/notes-app/.claude/agents/README.md
+cp agents/codex/*.toml examples/notes-app/.codex/agents/
 ```
 
 Read `notes-app/AGENTS.md` first, then the nested `web/` and `api/` profiles, then the per-tool wiring.

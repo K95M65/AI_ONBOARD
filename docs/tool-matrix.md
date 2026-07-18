@@ -59,5 +59,5 @@ Keep the root file general and push specifics down into nested files rather than
 | Cursor | `.cursor/rules/*.mdc` | Scoped/auto-attached rules with glob triggers |
 | Gemini CLI | `.gemini/settings.json` | Context filename, tools, MCP |
 
-These are documented per-tool in [`setup/`](setup/) *(coming next)*. They stay out of `AGENTS.md` so the
+These are documented per-tool in [`setup/`](setup/). They stay out of `AGENTS.md` so the
 shared file remains portable across every harness.

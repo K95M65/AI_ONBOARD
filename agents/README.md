@@ -33,12 +33,14 @@ elsewhere. Tune them per your layer profiles.
 ## Install
 
 ```bash
-# Claude Code — these .md files ARE the drop-in format
-mkdir -p .claude/agents && cp agents/*.md .claude/agents/
+# Claude Code — the role .md files ARE the drop-in format (this README is docs, so drop it)
+mkdir -p .claude/agents && cp agents/*.md .claude/agents/ && rm .claude/agents/README.md
 
 # Codex — ready-made .toml versions live in codex/
 mkdir -p .codex/agents && cp agents/codex/*.toml .codex/agents/
 ```
+
+Or let [`../templates/link.sh`](../templates/link.sh) `--agents` do both (it already skips this README).
 
 ## Realizing them per tool
 

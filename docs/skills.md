@@ -75,8 +75,8 @@ these tool-specific extras minimal if you want the skill to stay portable.
 | Project | `.claude/skills/<name>/` | Skills the whole team shares, committed to the repo |
 | Plugin | bundled in a plugin | Distributed skill packs |
 
-This repo's [`skills/`](../skills/) directory *(coming next)* will hold portable, reusable skills you can
-copy into any of the above.
+This repo's [`skills/`](../skills/) directory holds portable, reusable skills you can copy into any of the
+above.
 
 ## Skills vs. AGENTS.md — when to use which
 
