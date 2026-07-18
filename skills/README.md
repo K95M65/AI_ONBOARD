@@ -63,11 +63,21 @@ ln -s "$PWD/skills/dataviz" .agents/skills/dataviz
 | [`gh-issue`](gh-issue/) | Create, triage, and link issues |
 | [`gh-release`](gh-release/) | Cut a GitHub release with changelog/auto notes (pairs with `changelog`) |
 
-### Data & onboarding
+### Competitive intelligence & communication
+
+| Skill | What it does |
+|-------|--------------|
+| [`competitive-intel`](competitive-intel/) | Ethical CI cycle — scope → gather → analyze → communicate |
+| [`market-research`](market-research/) | Market sizing (TAM/SAM/SOM), sources, source credibility |
+| [`analytical-frameworks`](analytical-frameworks/) | SWOT, Porter, value chain, BCG, JTBD, PESTEL — data → insight |
+| [`data-storytelling`](data-storytelling/) | Turn analysis into an executive narrative (pairs with `dataviz`) |
+
+### Data, notes & onboarding
 
 | Skill | What it does |
 |-------|--------------|
 | [`dataviz`](dataviz/) | Correct, readable, accessible charts — choice, color, a11y |
+| [`obsidian`](obsidian/) | Read/write an Obsidian vault — wikilinks, frontmatter, note scaffolding |
 | [`agents-md-init`](agents-md-init/) | Bootstrap an `AGENTS.md` by detecting the stack + commands |
 
 ### Cloudflare (vendored — [`cloudflare/`](cloudflare/))
