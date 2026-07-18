@@ -69,4 +69,5 @@ This repo covers **project-level onboarding files** (what an agent should know w
 ---
 
 *Status: active. Core docs, per-tool setup (Claude Code + Codex are the primary focus), the behavioral +
-delegation model, reference subagents, and a worked example are all in place.*
+delegation model, reference subagents, a skills library (incl. a security-audit toolkit), and two worked
+examples (full-stack web + Go CLI) are all in place.*

@@ -1,0 +1,23 @@
+# Codex config for the todo CLI.
+# AGENTS.md (root + cmd/ + internal/) is read automatically — no wiring needed for conventions.
+# Codex can't auto-switch model by path, so layers are realized as profiles you select per session:
+#   codex --profile commands   (working in cmd/)
+#   codex --profile core       (working in internal/)
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+# Command layer: fast, low-effort — thin command wiring.
+[profiles.commands]
+model_reasoning_effort = "low"
+sandbox_mode = "workspace-write"
+
+# Core layer: strong, high-effort — logic and data integrity.
+[profiles.core]
+model_reasoning_effort = "high"
+sandbox_mode = "workspace-write"
+
+# Review: read-only.
+[profiles.review]
+model_reasoning_effort = "high"
+sandbox_mode = "read-only"

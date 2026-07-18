@@ -3,6 +3,16 @@
 Worked, read-top-to-bottom references showing how the pieces in this repo fit together in a real project.
 These are **config, not runnable app source** — the point is the wiring.
 
+Two **shapes**, to show the model isn't web-specific — the same framework flexes to fit the project:
+
+| Example | Shape | Layers | Design lens? |
+|---------|-------|--------|:---:|
+| [`notes-app`](notes-app/) | full-stack web monorepo (TS) | frontend · backend · data | ✅ |
+| [`todo-cli`](todo-cli/) | single-binary CLI (Go) | by *concern*: commands · core | ⛔ (no UI) |
+
+`security-review` applies to **both**; `design-review` only to the one with a UI. That's the point — which
+layer profiles you write, and which subagents you wire, follow the project's shape.
+
 ## `notes-app`
 
 A minimal full-stack TypeScript monorepo (Next.js `web/` + Fastify `api/`) wired for **Claude Code and
@@ -29,3 +39,21 @@ cp agents/codex/*.toml examples/notes-app/.codex/agents/
 ```
 
 Read `notes-app/AGENTS.md` first, then the nested `web/` and `api/` profiles, then the per-tool wiring.
+
+## `todo-cli`
+
+A single-binary **Go** CLI (Cobra; tasks stored as JSON under `~/.todo/`) wired for **Claude Code and
+Codex**. It's the *contrast* to `notes-app` — a different shape, so different choices:
+
+| Piece | File | Shows |
+|-------|------|-------|
+| Source of truth | [`todo-cli/AGENTS.md`](todo-cli/AGENTS.md) | Go stack, single binary; *no* FE/BE/data layers |
+| Layer profile (commands) | [`todo-cli/cmd/AGENTS.md`](todo-cli/cmd/AGENTS.md) | Nested profile: fast model, thin commands, `go test ./cmd/...` |
+| Layer profile (core) | [`todo-cli/internal/AGENTS.md`](todo-cli/internal/AGENTS.md) | Nested profile: strong model, testable logic, path-traversal guard, `-race` |
+| Claude Code wiring | [`todo-cli/CLAUDE.md`](todo-cli/CLAUDE.md) | `@AGENTS.md` + note that `design-review` doesn't apply |
+| Claude Code perms | [`todo-cli/.claude/settings.json`](todo-cli/.claude/settings.json) | Allow `go test`/`build`/`vet`; deny destructive |
+| Codex wiring | [`todo-cli/.codex/config.toml`](todo-cli/.codex/config.toml) | Per-layer profiles (`--profile commands` / `core`) |
+
+What changed vs `notes-app`: layers are split by **concern** (interface vs logic), not by web tier; the
+**`design-review`** subagent and the frontend skills drop out; **`security-review`** stays (path traversal,
+untrusted args). Same framework, different shape.
