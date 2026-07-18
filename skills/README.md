@@ -24,20 +24,43 @@ ln -s "$PWD/skills/dataviz" .agents/skills/dataviz
 
 ## Skills in this library
 
+### Security & audit
+
 | Skill | What it does |
 |-------|--------------|
-| [`conventional-commit`](conventional-commit/) | Writes a Conventional Commits message from your staged changes |
-| [`agents-md-init`](agents-md-init/) | Bootstraps an `AGENTS.md` by detecting your project's stack and commands |
-| [`dataviz`](dataviz/) | Guidance for correct, readable, accessible charts — chart choice, color, a11y |
-| [`component-scaffold`](component-scaffold/) | Scaffolds a React/TS component (component + test + index) from templates |
-| [`prisma-migrate`](prisma-migrate/) | Safely creates + applies a Prisma migration; guards against non-local databases |
-| [`security-audit`](security-audit/) | Systematic whole-codebase security audit — threat model, category checklist, surface-scan |
-| [`dependency-vuln-scan`](dependency-vuln-scan/) | Scans dependencies for known CVEs (npm/pnpm/yarn, Go, osv-scanner); degrades gracefully |
-| [`secret-scan`](secret-scan/) | Scans for committed secrets incl. git history (gitleaks/trufflehog, grep fallback) |
-| [`threat-model`](threat-model/) | STRIDE + data-flow threat model of a feature — design-time companion to `security-audit` |
-| [`cobra-command`](cobra-command/) | Scaffolds a Go Cobra subcommand + table-driven test (CLI counterpart to `component-scaffold`) |
-| [`pr-description`](pr-description/) | Writes a PR description from the branch's commits + diff |
-| [`changelog`](changelog/) | Rolls Conventional Commits since the last tag into release notes |
+| [`threat-model`](threat-model/) | STRIDE + data-flow threat model — design-time framing |
+| [`secure-coding`](secure-coding/) | Write-time defensive practices, per category |
+| [`input-sanitization`](input-sanitization/) | Validate-in / encode-out per sink (SQLi, XSS, command, path, SSRF) |
+| [`identity-management`](identity-management/) | Authn/authz patterns — sessions, JWT/OAuth, RBAC, MFA, IDOR |
+| [`secret-management`](secret-management/) | Store/inject/scope/rotate secrets safely |
+| [`vulnerability-hardening`](vulnerability-hardening/) | Config/deploy hardening — headers, TLS, least privilege |
+| [`security-audit`](security-audit/) | Systematic whole-codebase audit — threat model, checklist, surface-scan |
+| [`dependency-vuln-scan`](dependency-vuln-scan/) | Scan dependencies for known CVEs (npm/Go/osv-scanner) |
+| [`secret-scan`](secret-scan/) | Scan for committed secrets incl. git history |
+| [`automated-security-review`](automated-security-review/) | Wire the scanners into CI as a PR gate (GitHub Actions) |
+
+### Code scaffolding
+
+| Skill | What it does |
+|-------|--------------|
+| [`component-scaffold`](component-scaffold/) | Scaffold a React/TS component (component + test + index) |
+| [`cobra-command`](cobra-command/) | Scaffold a Go Cobra subcommand + table-driven test |
+| [`prisma-migrate`](prisma-migrate/) | Safely create + apply a Prisma migration; guards non-local DBs |
+
+### Dev workflow
+
+| Skill | What it does |
+|-------|--------------|
+| [`conventional-commit`](conventional-commit/) | Write a Conventional Commits message from staged changes |
+| [`pr-description`](pr-description/) | Write a PR description from the branch's commits + diff |
+| [`changelog`](changelog/) | Roll Conventional Commits since the last tag into release notes |
+
+### Data & onboarding
+
+| Skill | What it does |
+|-------|--------------|
+| [`dataviz`](dataviz/) | Correct, readable, accessible charts — choice, color, a11y |
+| [`agents-md-init`](agents-md-init/) | Bootstrap an `AGENTS.md` by detecting the stack + commands |
 
 ## Authoring a new skill
 
