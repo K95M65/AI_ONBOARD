@@ -55,6 +55,14 @@ ln -s "$PWD/skills/dataviz" .agents/skills/dataviz
 | [`pr-description`](pr-description/) | Write a PR description from the branch's commits + diff |
 | [`changelog`](changelog/) | Roll Conventional Commits since the last tag into release notes |
 
+### GitHub (`gh` CLI)
+
+| Skill | What it does |
+|-------|--------------|
+| [`gh-pr`](gh-pr/) | Create/update a pull request (pairs with `pr-description`) |
+| [`gh-issue`](gh-issue/) | Create, triage, and link issues |
+| [`gh-release`](gh-release/) | Cut a GitHub release with changelog/auto notes (pairs with `changelog`) |
+
 ### Data & onboarding
 
 | Skill | What it does |
