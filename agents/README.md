@@ -60,9 +60,12 @@ mkdir -p .claude/agents && cp agents/*.md .claude/agents/ && rm .claude/agents/R
 
 # Codex — ready-made .toml versions live in codex/
 mkdir -p .codex/agents && cp agents/codex/*.toml .codex/agents/
+
+# opencode — ported .md versions live in opencode/
+mkdir -p .opencode/agent && cp agents/opencode/*.md .opencode/agent/
 ```
 
-Or let [`../templates/link.sh`](../templates/link.sh) `--agents` do both (it already skips this README).
+Or let [`../templates/link.sh`](../templates/link.sh) `--agents` do all three (it skips each README).
 
 ## Realizing them per tool
 
@@ -72,6 +75,10 @@ Or let [`../templates/link.sh`](../templates/link.sh) `--agents` do both (it alr
   `developer_instructions`). See
   [`../docs/setup/codex.md`](../docs/setup/codex.md#realizing-subagents--layer-profiles) and
   [`codex/README.md`](codex/README.md).
+- **opencode** — ported `.md` versions ship in [`opencode/`](opencode/) (`mode: subagent` + a `permission:`
+  block instead of a `tools:` list). See
+  [`../docs/setup/opencode.md`](../docs/setup/opencode.md#realizing-subagents--skills) and
+  [`opencode/README.md`](opencode/README.md).
 
 Cross-cutting agents (`security-review`, `design-review`) run over the **diff**, across every path layer —
 they are reviewers, not directories. Keep their always-on rules (e.g. "never log secrets") in the **root**

@@ -91,7 +91,7 @@ install_agents() {
     say "      cp <AI_ONBOARD>/agents/codex/*.toml .codex/agents/ # Codex"
     return
   fi
-  run "mkdir -p .claude/agents .codex/agents"
+  run "mkdir -p .claude/agents .codex/agents .opencode/agent"
   local f base
   for f in "$AGENTS_SRC"/*.md; do
     base="$(basename "$f")"
@@ -104,6 +104,14 @@ install_agents() {
       run "cp '$f' .codex/agents/"
     done
     say "  → Codex: reference subagents copied into .codex/agents/"
+  fi
+  if [ -d "$AGENTS_SRC/opencode" ]; then
+    for f in "$AGENTS_SRC"/opencode/*.md; do
+      base="$(basename "$f")"
+      [ "$base" = "README.md" ] && continue
+      run "cp '$f' .opencode/agent/"
+    done
+    say "  → opencode: reference subagents copied into .opencode/agent/"
   fi
 }
 

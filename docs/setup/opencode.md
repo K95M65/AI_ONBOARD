@@ -65,6 +65,32 @@ injection via `!`command``.
 
 Remote MCP servers use `"type": "remote"` with a `url`.
 
+## Realizing subagents & skills
+
+### Reference subagents → `.opencode/agent/`
+
+opencode's agent format is `.md` with frontmatter + a system-prompt body (like Claude Code) but a different
+schema. The repo ships **ported** versions in [`agents/opencode/`](../../agents/opencode/):
+
+```bash
+mkdir -p .opencode/agent && cp agents/opencode/*.md .opencode/agent/    # or: link.sh --agents
+```
+
+The port adds `mode: subagent`, swaps Claude's `tools:` comma-list for a `permission:` block (read-only for
+the review/research roles; `verifier` denies `edit` only), and omits `model` — opencode is multi-provider, so
+set `provider/model` per agent if you want a tier. Reach subagents by **@mention** (`@reviewer …`) or the
+**Task tool**. Layer profiles work via nested `AGENTS.md` (native); like Codex, opencode can't auto-switch
+model by path — set a per-agent `model`/`permission` instead.
+
+### Skills — nothing to do
+
+opencode reads the **open Agent Skills** standard natively and scans `.opencode/skills/`, **`.claude/skills/`**,
+and **`.agents/skills/`** (project + global). So the repo's [34 skills](../../skills/) work in opencode
+**as-is** — if you've run `link.sh --skills` (which populates `.claude/skills/` and `.agents/skills/`),
+opencode picks them up with zero extra steps. Skills load on demand via opencode's `skill` tool, so make sure
+that tool isn't denied in your permission config. (A skill's folder name must equal its `name:` field and
+match `^[a-z0-9]+(-[a-z0-9]+)*$`.)
+
 ## Recommended baseline
 
 ```bash

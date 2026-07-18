@@ -7,8 +7,8 @@ the agent sees a one-line description of every available skill up front, and pul
 the agent deep, on-demand expertise.
 
 Skills began at Anthropic but are now an **open, cross-vendor standard** ([agentskills.io](https://agentskills.io),
-Dec 2025): the *same* `SKILL.md` folder runs in **Claude Code and Codex** (and 30+ other tools) with no
-wrapper and no translation. That makes a skill the most portable artifact in this repo — author it once,
+Dec 2025): the *same* `SKILL.md` folder runs in **Claude Code, Codex, and opencode** (and 30+ other tools)
+with no wrapper and no translation. That makes a skill the most portable artifact in this repo — author it once,
 install it into each harness's skills directory.
 
 ## Anatomy
@@ -77,9 +77,13 @@ The same skill folder is discovered from different directories per harness:
 |---------|-------------------------|-----------------------|
 | **Claude Code** | `~/.claude/skills/<name>/` | `.claude/skills/<name>/` |
 | **Codex** | `~/.agents/skills/<name>/` | `.agents/skills/<name>/` |
+| **opencode** | `~/.config/opencode/skills/<name>/` | `.opencode/skills/<name>/` |
 
 > Codex uses the **vendor-neutral `.agents/skills/`** path — **not** `.codex/skills/` (a common third-party
 > error). It scans `.agents/skills` from the cwd up to the repo root, then `~/.agents/skills`.
+>
+> **opencode also reads `.claude/skills/` and `.agents/skills/`** (in addition to `.opencode/skills/`), so
+> anything installed for Claude Code or Codex is already visible to opencode — no separate copy needed.
 
 This repo's [`skills/`](../skills/) directory holds portable, reusable skills. Copy — or symlink — a folder
 into the paths above; a symlink from one canonical copy into both trees keeps them in sync with zero

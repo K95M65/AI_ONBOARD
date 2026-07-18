@@ -1,7 +1,8 @@
 # Skills library
 
-Portable, reusable [Agent Skills](../docs/skills.md) — an open standard, so each folder works **as-is in both
-Claude Code and Codex** (and 30+ other tools). Copy or symlink a folder into a harness's skills directory:
+Portable, reusable [Agent Skills](../docs/skills.md) — an open standard, so each folder works **as-is in
+Claude Code, Codex, and opencode** (and 30+ other tools). Copy or symlink a folder into a harness's skills
+directory (opencode also reads the `.claude/skills` and `.agents/skills` trees, so it needs no separate copy):
 
 | Harness | Personal | Project (team-shared) |
 |---------|----------|-----------------------|
@@ -84,7 +85,7 @@ ln -s "$PWD/skills/dataviz" .agents/skills/dataviz
 
 A curated set of Cloudflare's own Agent Skills (Apache-2.0), for teams on the Cloudflare Developer Platform:
 `wrangler`, `workers-best-practices`, `durable-objects`, `cloudflare-one`, `turnstile-spin`, `agents-sdk`,
-`cloudflare-email-service`, `sandbox-sdk`. See [`cloudflare/README.md`](cloudflare/) and
+`cloudflare-email-service`, `sandbox-sdk`. See [`cloudflare/README.md`](cloudflare/README.md) and
 [`cloudflare/NOTICE.md`](cloudflare/NOTICE.md) for provenance. `link.sh --skills` installs these too.
 
 ## Authoring a new skill
