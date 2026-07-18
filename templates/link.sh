@@ -118,12 +118,14 @@ install_skills() {
     return
   fi
   run "mkdir -p .claude/skills .agents/skills"
-  local d name
-  for d in "$SKILLS_SRC"/*/; do
-    [ -f "${d}SKILL.md" ] || continue   # a real skill folder, not README etc.
+  # Discover skills at any depth — flat (skills/foo/) or grouped (skills/cloudflare/foo/).
+  # A skill is any directory containing a SKILL.md; README/NOTICE/LICENSE are skipped naturally.
+  local skfile d name
+  find "$SKILLS_SRC" -type f -name SKILL.md 2>/dev/null | sort | while IFS= read -r skfile; do
+    d="$(dirname "$skfile")"
     name="$(basename "$d")"
-    run "cp -R '${d%/}' .claude/skills/"
-    run "cp -R '${d%/}' .agents/skills/"
+    run "cp -R '$d' .claude/skills/"
+    run "cp -R '$d' .agents/skills/"
     say "    • $name"
   done
   say "  → skills copied into .claude/skills/ (Claude Code) and .agents/skills/ (Codex)"

@@ -62,6 +62,13 @@ ln -s "$PWD/skills/dataviz" .agents/skills/dataviz
 | [`dataviz`](dataviz/) | Correct, readable, accessible charts — choice, color, a11y |
 | [`agents-md-init`](agents-md-init/) | Bootstrap an `AGENTS.md` by detecting the stack + commands |
 
+### Cloudflare (vendored — [`cloudflare/`](cloudflare/))
+
+A curated set of Cloudflare's own Agent Skills (Apache-2.0), for teams on the Cloudflare Developer Platform:
+`wrangler`, `workers-best-practices`, `durable-objects`, `cloudflare-one`, `turnstile-spin`, `agents-sdk`,
+`cloudflare-email-service`, `sandbox-sdk`. See [`cloudflare/README.md`](cloudflare/) and
+[`cloudflare/NOTICE.md`](cloudflare/NOTICE.md) for provenance. `link.sh --skills` installs these too.
+
 ## Authoring a new skill
 
 Follow [docs/skills.md](../docs/skills.md). The short version:
