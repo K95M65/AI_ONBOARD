@@ -5,9 +5,31 @@ A small, portable starter set of subagents that realize the **function axis** of
 review lenses (**security**, **design**). These are the roles where delegation actually pays off — context
 isolation, parallelism, or an independent lens — not an org chart.
 
-There is deliberately **no `frontend-executor` / `backend-executor`** here. Execution stays merged and
-full-stack (a feature is a vertical slice); layers specialize *execution* via nested `AGENTS.md` profiles, not
-via separate executor agents. See [`../docs/delegation.md`](../docs/delegation.md).
+## Why there's no `developer` agent
+
+The developer isn't missing — **it's the driver.** This set is the specialist *eyes* you delegate *to*; the
+generalist *hands* that write code is the main agent you're already running. Implementation is the default
+behavior, and it's already fully specified without a dedicated persona by two things:
+
+- the **behavioral contract** (`AGENTS.md` → *How to work*: understand → plan → change → verify), and
+- the **layer profile** it picks up by location (the nested `AGENTS.md` that pins model, skills, conventions,
+  and checks for `web/`, `api/`, …).
+
+So "execute × frontend" isn't an agent — it's the driver working in `web/` with the frontend profile applied.
+A canned `frontend-developer` would just be the main agent carrying a frozen, worse copy of that profile.
+Splitting execution by layer also backfires: a feature is a vertical slice through both layers, and a
+frontend/backend handoff mid-feature is how contract mismatches happen. Merged execution keeps the slice
+coherent. (Codex makes the same point natively — its built-in `worker` is the execution agent and `explorer`
+≈ our `researcher`; redefining them would only shadow better defaults.)
+
+**The one exception — parallelism.** An executor-as-subagent earns its place only when you fan out genuinely
+independent units (a migration sweep, or independent FE/BE tickets run concurrently in separate contexts or
+worktrees). Even then it's thin: its instructions are just *the behavioral contract + "do this one unit"*,
+because it inherits the layer profile by path. That's why it's not in the default set — a single canned
+executor would carry the wrong model/tools for half the layers, and per-layer developer agents would
+reintroduce the org-chart split this model rejects. If you need it, add one minimal `worker` (full tools,
+`model: inherit`) with a *"parallel fan-out only"* guardrail — don't build a roster. See
+[`../docs/delegation.md`](../docs/delegation.md).
 
 ## The set
 
