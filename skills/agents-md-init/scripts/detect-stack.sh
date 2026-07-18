@@ -65,8 +65,9 @@ for f in .prettierrc .prettierrc.json .prettierrc.js .eslintrc .eslintrc.json .e
          ruff.toml .ruff.toml .flake8 .rubocop.yml .editorconfig biome.json rustfmt.toml .golangci.yml; do
   [ -e "$f" ] && echo "  - $f"
 done
-[ -f package.json ] && command -v node >/dev/null 2>&1 && \
+if [ -f package.json ] && command -v node >/dev/null 2>&1; then
   node -e 'const p=require("./package.json");for(const k of ["prettier","eslintConfig"])if(p[k])console.log("  - package.json#"+k)' 2>/dev/null || true
+fi
 
 echo
 echo "=== Top-level layout ==="
