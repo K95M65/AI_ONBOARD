@@ -21,7 +21,7 @@ Codex**. It demonstrates the whole stack in one place:
 | Piece | File | Shows |
 |-------|------|-------|
 | Source of truth | [`notes-app/AGENTS.md`](notes-app/AGENTS.md) | Project facts + the universal *How to work* contract + delegation pointer |
-| Layer profile (frontend) | [`notes-app/web/AGENTS.md`](notes-app/web/AGENTS.md) | Nested profile: fast model, design tokens, `test:web` + screenshot |
+| Layer profile (frontend) | [`notes-app/web/AGENTS.md`](notes-app/web/AGENTS.md) | Nested profile: fast model, design tokens, `pnpm test -- web` + screenshot |
 | Layer profile (backend) | [`notes-app/api/AGENTS.md`](notes-app/api/AGENTS.md) | Nested profile: strong model, authz on every route, `test:api` |
 | Claude Code wiring | [`notes-app/CLAUDE.md`](notes-app/CLAUDE.md) | One-line `@AGENTS.md` import + Claude-only notes |
 | Claude Code perms | [`notes-app/.claude/settings.json`](notes-app/.claude/settings.json) | Allow the check commands; deny destructive ones |
