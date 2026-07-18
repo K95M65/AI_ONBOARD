@@ -70,7 +70,7 @@ done
 
 echo
 echo "=== Top-level layout ==="
-ls -1p | grep '/$' | head -n 30 | sed 's/^/  /' || true
+for d in */; do [ -d "$d" ] && printf '  %s\n' "$d"; done | head -n 30 || true
 
 echo
 echo "Use the above to fill Setup / Build-Test-Lint / Structure / Conventions in AGENTS.md."

@@ -14,7 +14,7 @@ if [ "$#" -ge 1 ] && [ "${1#\#}" = "$1" ]; then FOLDER="$1"; shift; fi
 
 DATE="$(date +%F)"
 # Sanitize only path-illegal characters; keep spaces (Obsidian filenames allow them).
-SLUG="$(printf '%s' "$TITLE" | tr '/:\\' '---')"
+SLUG="$(printf '%s' "$TITLE" | tr '\/:' '---')"
 DEST="$FOLDER/$SLUG.md"
 
 mkdir -p "$FOLDER"
