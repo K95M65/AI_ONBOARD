@@ -33,6 +33,7 @@ Codex, Claude Code, opencode, Cursor, Gemini CLI, Aider, Windsurf and friends ea
 | [`docs/agents-md.md`](docs/agents-md.md) | The `AGENTS.md` format, sections, and precedence rules |
 | [`docs/agent-behavior.md`](docs/agent-behavior.md) | The behavioral contract — how agents should work, with OpenAI/Anthropic citations |
 | [`docs/delegation.md`](docs/delegation.md) | How agents delegate to subagents (by function) and specialize by layer (profiles) |
+| [`docs/mechanisms.md`](docs/mechanisms.md) | Which mechanism to use — AGENTS.md vs Skills vs Subagents |
 | [`docs/skills.md`](docs/skills.md) | The Agent Skills format (`SKILL.md`) and how to author portable skills |
 | `docs/setup/` | Per-tool setup guides (Claude Code, Codex, opencode, Cursor, Gemini CLI) |
 | [`agents/`](agents/) | Reference subagents (researcher, reviewer, verifier, security/design lenses) |

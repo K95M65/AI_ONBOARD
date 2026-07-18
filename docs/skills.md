@@ -108,3 +108,6 @@ duplication.
 
 Put durable, project-wide facts in `AGENTS.md`. Package a repeatable procedure — especially one with scripts
 or a specific workflow — as a Skill.
+
+For the full decision — including **skill vs *subagent*** (same expertise, different delivery) — see
+[`mechanisms.md`](mechanisms.md).
