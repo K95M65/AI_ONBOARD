@@ -77,7 +77,7 @@ ln -s "$PWD/skills/dataviz" .agents/skills/dataviz
 
 | Skill | What it does |
 |-------|--------------|
-| [`dataviz`](dataviz/) | Correct, readable, accessible charts — choice, color, a11y |
+| [`dataviz`](dataviz/) | Correct, readable, accessible charts — choice, color, a11y. *(Claude Code has a richer built-in `dataviz`; prefer that there — [see note](dataviz/SKILL.md#note--name-collision-on-claude-code).)* |
 | [`obsidian`](obsidian/) | Read/write an Obsidian vault — wikilinks, frontmatter, note scaffolding |
 | [`agents-md-init`](agents-md-init/) | Bootstrap an `AGENTS.md` by detecting the stack + commands |
 
