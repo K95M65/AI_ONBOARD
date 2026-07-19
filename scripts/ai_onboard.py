@@ -450,8 +450,11 @@ def safe_extract(archive: Path, destination: Path) -> None:
         members = bundle.getmembers()
         if len(members) > MAX_ARCHIVE_MEMBERS:
             raise LifecycleError("source archive contains too many entries")
+        if any(member.size < 0 for member in members):
+            raise LifecycleError("source archive contains invalid size metadata")
         if sum(member.size for member in members) > MAX_EXTRACTED_BYTES:
             raise LifecycleError("source archive expands beyond the safety limit")
+        safe_members: list[tarfile.TarInfo] = []
         for member in members:
             candidate = (destination / member.name).resolve()
             if (
@@ -460,13 +463,18 @@ def safe_extract(archive: Path, destination: Path) -> None:
             ):
                 raise LifecycleError("archive contains an unsafe path")
             if member.issym() or member.islnk():
-                raise LifecycleError("archive symlinks are not accepted")
+                continue
             if not (member.isdir() or member.isreg()):
                 raise LifecycleError("archive contains an unsupported file type")
+            safe_members.append(member)
         try:
-            bundle.extractall(destination, members=members, filter="data")
+            bundle.extractall(
+                destination,
+                members=safe_members,
+                filter="data",
+            )
         except TypeError:  # Python 3.11 without the extraction-filter backport.
-            bundle.extractall(destination, members=members)
+            bundle.extractall(destination, members=safe_members)
 
 
 def download_archive(repository: str, revision: str, archive: Path) -> None:

@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 import hashlib
 import importlib.util
+import io
 import os
 import plistlib
 import subprocess
 import sys
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -1102,6 +1104,52 @@ class LifecycleManagerTests(unittest.TestCase):
         )
 
         self.assertIn("symlink", result.stderr)
+
+    def test_safe_extract_skips_archive_symlinks(self) -> None:
+        archive = self.target / "source.tar.gz"
+        destination = self.target / "extracted"
+        destination.mkdir()
+        body = b"# Project instructions\n"
+
+        with tarfile.open(archive, "w:gz") as bundle:
+            regular = tarfile.TarInfo("repo/AGENTS.md")
+            regular.size = len(body)
+            bundle.addfile(regular, io.BytesIO(body))
+            linked = tarfile.TarInfo("repo/GEMINI.md")
+            linked.type = tarfile.SYMTYPE
+            linked.linkname = "AGENTS.md"
+            bundle.addfile(linked)
+            hard_linked = tarfile.TarInfo("repo/COPILOT.md")
+            hard_linked.type = tarfile.LNKTYPE
+            hard_linked.linkname = "repo/AGENTS.md"
+            bundle.addfile(hard_linked)
+
+        MANAGER_MODULE.safe_extract(archive, destination)
+
+        self.assertEqual(
+            (destination / "repo/AGENTS.md").read_bytes(),
+            body,
+        )
+        self.assertFalse((destination / "repo/GEMINI.md").exists())
+        self.assertFalse((destination / "repo/COPILOT.md").exists())
+
+    def test_safe_extract_rejects_negative_archive_member_size(self) -> None:
+        archive = self.target / "source.tar.gz"
+        destination = self.target / "extracted"
+        destination.mkdir()
+
+        with tarfile.open(archive, "w:gz") as bundle:
+            linked = tarfile.TarInfo("repo/GEMINI.md")
+            linked.type = tarfile.SYMTYPE
+            linked.linkname = "AGENTS.md"
+            linked.size = -1
+            bundle.addfile(linked)
+
+        with self.assertRaisesRegex(
+            MANAGER_MODULE.LifecycleError,
+            "invalid size metadata",
+        ):
+            MANAGER_MODULE.safe_extract(archive, destination)
 
     def test_read_only_command_does_not_create_missing_target(self) -> None:
         missing = self.target.parent / "missing-project"
