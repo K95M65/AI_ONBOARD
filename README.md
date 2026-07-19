@@ -173,6 +173,11 @@ When user-facing behavior, capabilities, setup, or repository structure changes,
 and the website narrative in the same change. See [`docs/website.md`](docs/website.md) for the maintenance
 and GitHub Pages publishing contract.
 
+The Pages workflow always validates the static artifact. Deployment requires a public repository or a plan
+that supports Pages for private repositories. For supported private repositories, enable Pages with GitHub
+Actions as the publishing source and set the repository variable `ENABLE_PRIVATE_PAGES=true`; otherwise CI
+reports a deployment skip without treating successful website validation as a failure.
+
 ## Scope
 
 This repo covers **project-level onboarding files** (what an agent should know when it opens your repo),

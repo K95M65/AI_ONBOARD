@@ -25,6 +25,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -42,15 +46,23 @@ jobs:
         run: |
           python3 scripts/check_site.py
           node --check site/app.js
+      - name: Report private Pages availability
+        if: github.event.repository.private && vars.ENABLE_PRIVATE_PAGES != 'true'
+        run: |
+          echo "::notice::Website validation passed. Deployment is skipped because this private repository's current plan does not support GitHub Pages."
       - name: Configure Pages
+        if: github.event.repository.private == false || vars.ENABLE_PRIVATE_PAGES == 'true'
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact
+        if: github.event.repository.private == false || vars.ENABLE_PRIVATE_PAGES == 'true'
         uses: actions/upload-pages-artifact@v4
         with:
           path: site
 
   deploy:
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event.repository.private == false || vars.ENABLE_PRIVATE_PAGES == 'true')
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

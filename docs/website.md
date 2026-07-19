@@ -101,7 +101,8 @@ python3 scripts/sync_project_docs.py
 python3 scripts/sync_project_docs.py --check
 python3 scripts/check_skills.py
 python3 scripts/check_harness_configs.py
-python3 -m unittest -v tests/test_ai_onboard.py
+python3 -m unittest discover -v tests
+python3 scripts/test_deployments.py
 python3 scripts/check_site.py
 node --check site/app.js
 python3 -m http.server 4173 --directory site
@@ -119,9 +120,15 @@ Then exercise the site in a real browser at <http://localhost:4173>:
 
 ## GitHub Pages
 
-`.github/workflows/pages.yml` validates generated content, packages only `site/`, and deploys that artifact
-with the official GitHub Pages actions. The workflow deploys from `main` and also supports manual dispatch.
+`.github/workflows/pages.yml` always validates generated content. When Pages is available, it packages only
+`site/` and deploys that artifact from `main` with the official GitHub Pages actions; manual dispatch is also
+supported.
 
 The publishing target is `https://k95m65.github.io/AI_ONBOARD/`. GitHub Pages should be treated as public
 output even when this repository is private; keep internal or sensitive material out of `site/` and its
 generated catalog.
+
+GitHub's current plan must support Pages for the repository visibility. For a supported private repository,
+enable Pages with GitHub Actions as the publishing source and set the repository variable
+`ENABLE_PRIVATE_PAGES=true`. Without that opt-in, the workflow still validates the complete website artifact
+and reports that deployment was skipped instead of failing an otherwise healthy build.
