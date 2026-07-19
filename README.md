@@ -146,9 +146,10 @@ python3 .ai-onboard/bin/ai_onboard.py check-git
 python3 .ai-onboard/bin/ai_onboard.py check-git --history-only
 ```
 
-`check-git` requires both the effective author and committer process identities—and, by default, every
-commit reachable from local refs—to use GitHub's `users.noreply.github.com` domain. It reports unsafe roles
-and commit IDs without echoing the private address. The AI_ONBOARD source checkout also ships tracked
+`check-git` requires both effective author and committer **process** identities to use GitHub's
+`users.noreply.github.com` domain. Reachable history also accepts GitHub's own `noreply@github.com` service
+identity for Dependabot and other GitHub-authored commits. It reports unsafe roles and commit IDs without
+echoing the private address. The AI_ONBOARD source checkout also ships tracked
 commit, merge, patch, and pre-push guards; activate them once with
 `git config core.hooksPath .githooks`. The pre-push guard consumes Git's exact outgoing object ranges, so
 it catches preserved or explicitly overridden authors—even from a direct object-ID push—before network

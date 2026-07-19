@@ -1221,6 +1221,7 @@ class LifecycleManagerTests(unittest.TestCase):
 
 class GitIdentityCheckTests(unittest.TestCase):
     NOREPLY = "5134637+K95M65@users.noreply.github.com"
+    GITHUB_SERVICE_NOREPLY = "noreply@github.com"
     PRIVATE = "maintainer@example.com"
 
     def setUp(self) -> None:
@@ -1261,6 +1262,43 @@ class GitIdentityCheckTests(unittest.TestCase):
         marker.write_text(f"{email}\n", encoding="utf-8")
         self.git("add", "marker.txt")
         self.git("commit", "-q", "-m", "test identity", email=email)
+        return self.git("rev-parse", "HEAD").stdout.strip()
+
+    def commit_with_identities(
+        self,
+        author_email: str,
+        committer_email: str,
+    ) -> str:
+        marker = self.repository / "marker.txt"
+        marker.write_text(
+            f"{author_email} {committer_email}\n",
+            encoding="utf-8",
+        )
+        self.git("add", "marker.txt")
+        environment = os.environ.copy()
+        environment.update(
+            {
+                "GIT_AUTHOR_NAME": "Test Author",
+                "GIT_AUTHOR_EMAIL": author_email,
+                "GIT_COMMITTER_NAME": "GitHub",
+                "GIT_COMMITTER_EMAIL": committer_email,
+            }
+        )
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(self.repository),
+                "commit",
+                "-q",
+                "-m",
+                "test split identities",
+            ],
+            env=environment,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
         return self.git("rev-parse", "HEAD").stdout.strip()
 
     def check(
@@ -1308,6 +1346,31 @@ class GitIdentityCheckTests(unittest.TestCase):
 
         self.assertIn("Git process identity passed", result.stdout)
         self.assertIn("Git history passed: 1 reachable commit(s)", result.stdout)
+
+    def test_history_accepts_github_service_committer(self) -> None:
+        self.commit_with_identities(
+            self.NOREPLY,
+            self.GITHUB_SERVICE_NOREPLY,
+        )
+
+        result = self.check(
+            "--history-only",
+            email=self.NOREPLY,
+            expected=0,
+        )
+
+        self.assertIn("Git history passed: 1 reachable commit(s)", result.stdout)
+
+    def test_process_rejects_github_service_identity(self) -> None:
+        self.commit(self.NOREPLY)
+
+        result = self.check(
+            "--identity-only",
+            email=self.GITHUB_SERVICE_NOREPLY,
+            expected=1,
+        )
+
+        self.assertIn("Git identity check found 2 issue(s)", result.stdout)
 
     def test_check_git_rejects_private_process_email_without_echoing_it(
         self,

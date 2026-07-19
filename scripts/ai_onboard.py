@@ -51,6 +51,7 @@ GITHUB_NOREPLY_PATTERN = re.compile(
     r"^[^@\s<>]+@users\.noreply\.github\.com$",
     re.IGNORECASE,
 )
+GITHUB_SERVICE_NOREPLY = "noreply@github.com"
 GIT_IDENT_EMAIL_PATTERN = re.compile(r"<([^<>\s]+)>\s+\d+\s+[+-]\d{4}$")
 NOTIFIER_LABEL_PREFIX = "com.rsthrives.ai-onboard-update"
 REVIEW_REQUIRED_ARTIFACTS = {
@@ -381,8 +382,15 @@ def git_ident_email(target: Path, variable: str) -> str:
     return match.group(1)
 
 
-def is_github_noreply(email: str) -> bool:
-    return bool(GITHUB_NOREPLY_PATTERN.fullmatch(email))
+def is_github_noreply(
+    email: str,
+    *,
+    allow_github_service: bool = False,
+) -> bool:
+    return bool(GITHUB_NOREPLY_PATTERN.fullmatch(email)) or (
+        allow_github_service
+        and email.casefold() == GITHUB_SERVICE_NOREPLY
+    )
 
 
 def git_stream_lines(
@@ -545,9 +553,15 @@ def command_check_git(
             ):
                 history_count += 1
                 unsafe_roles = []
-                if not is_github_noreply(author_email):
+                if not is_github_noreply(
+                    author_email,
+                    allow_github_service=True,
+                ):
                     unsafe_roles.append("author")
-                if not is_github_noreply(committer_email):
+                if not is_github_noreply(
+                    committer_email,
+                    allow_github_service=True,
+                ):
                     unsafe_roles.append("committer")
                 if unsafe_roles:
                     roles = " and ".join(unsafe_roles)
