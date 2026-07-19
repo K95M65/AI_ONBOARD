@@ -109,6 +109,28 @@ An applied `sync` or `upgrade` clears the cached notice so `doctor` does not rep
 landed. Package release metadata classifies a change as `security`, `fix`, `feature`, or `maintenance`;
 the classification and summary come from committed package metadata, not generated marketing copy.
 
+## Pre-publish deployment smoke tests
+
+Before pushing a package build, test complete isolated deployments for all first-class harnesses:
+
+```bash
+python3 scripts/test_deployments.py
+```
+
+Select one harness for a focused or verbose run:
+
+```bash
+python3 scripts/test_deployments.py --harness claude
+python3 scripts/test_deployments.py --harness codex --verbose
+python3 scripts/test_deployments.py --harness opencode
+```
+
+Each run creates a temporary project, preserves seeded user configuration, installs all profiles with
+agents, configs, notifications, and workflow foundations, then exercises `status`, `doctor`, the structured
+local-source update check, sync and uninstall previews, and actual cleanup. No harness login, provider
+credential, or model API call is required. CI runs the same contract as a three-harness matrix on every push
+and pull request.
+
 The initial package channel is `edge`, which resolves the latest commit on `main`. Change
 `source.channel` in `ai-onboard.json` to `stable` after the repository publishes versioned GitHub Releases,
 or set it to a tag or commit for a deliberate pin.

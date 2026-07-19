@@ -210,6 +210,95 @@ def validate_paths_and_docs(errors: list[str]) -> None:
                     f"{required!r}"
                 )
 
+    lint_workflow_path = ROOT / ".github" / "workflows" / "lint.yml"
+    if not lint_workflow_path.is_file():
+        errors.append(f"{lint_workflow_path}: required CI workflow is missing")
+    else:
+        lint_workflow = lint_workflow_path.read_text(encoding="utf-8")
+        active_workflow = "\n".join(
+            line
+            for line in lint_workflow.splitlines()
+            if not line.lstrip().startswith("#")
+        )
+        active_lines = active_workflow.splitlines()
+        try:
+            on_start = active_lines.index("on:")
+        except ValueError:
+            on_block: list[str] = []
+        else:
+            on_end = next(
+                (
+                    index
+                    for index in range(on_start + 1, len(active_lines))
+                    if active_lines[index].strip()
+                    and not active_lines[index].startswith(" ")
+                ),
+                len(active_lines),
+            )
+            on_block = active_lines[on_start + 1 : on_end]
+        for trigger in ("push", "pull_request"):
+            header = f"  {trigger}:"
+            try:
+                trigger_start = on_block.index(header)
+            except ValueError:
+                errors.append(
+                    f"{lint_workflow_path}: deployment checks must run on "
+                    f"every {trigger.replace('_', ' ')}"
+                )
+                continue
+            trigger_end = next(
+                (
+                    index
+                    for index in range(trigger_start + 1, len(on_block))
+                    if on_block[index].strip()
+                    and len(on_block[index]) - len(on_block[index].lstrip()) <= 2
+                ),
+                len(on_block),
+            )
+            if any(
+                line.strip()
+                for line in on_block[trigger_start + 1 : trigger_end]
+            ):
+                errors.append(
+                    f"{lint_workflow_path}: {trigger} must not have branch, "
+                    "path, or event filters"
+                )
+        if not on_block:
+            errors.append(
+                f"{lint_workflow_path}: deployment checks must run on every "
+                "push and pull request"
+            )
+        deploy_job = re.search(
+            r"(?ms)^  deploy-smoke:\s*\n"
+            r"(?P<body>.*?)(?=^  [a-zA-Z0-9_-]+:\s*\n|\Z)",
+            active_workflow,
+        )
+        if not deploy_job:
+            errors.append(
+                f"{lint_workflow_path}: deploy-smoke job is missing"
+            )
+            deploy_job_body = ""
+        else:
+            deploy_job_body = deploy_job.group("body")
+        for required in (
+            "harness: [claude, codex, opencode]",
+            'scripts/test_deployments.py --harness "${{ matrix.harness }}"',
+        ):
+            if required not in deploy_job_body:
+                errors.append(
+                    f"{lint_workflow_path}: deployment matrix is missing "
+                    f"{required!r}"
+                )
+        for forbidden in ("if:", "continue-on-error:", "exclude:", "needs:"):
+            if any(
+                line.strip().startswith(forbidden)
+                for line in deploy_job_body.splitlines()
+            ):
+                errors.append(
+                    f"{lint_workflow_path}: deploy-smoke must not contain "
+                    f"{forbidden!r}"
+                )
+
     docs = "\n".join(
         path.read_text(encoding="utf-8")
         for path in (
@@ -279,7 +368,9 @@ def validate_package_manifest(errors: list[str]) -> None:
 
     for required_path in (
         ROOT / "scripts" / "ai_onboard.py",
+        ROOT / "scripts" / "test_deployments.py",
         ROOT / "tests" / "test_ai_onboard.py",
+        ROOT / "tests" / "test_deployments.py",
     ):
         if not required_path.is_file():
             errors.append(f"{required_path}: required lifecycle file is missing")

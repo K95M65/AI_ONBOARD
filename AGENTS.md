@@ -24,7 +24,8 @@ Run checks relevant to the files you change. Before finishing a multi-file or pu
 python3 scripts/sync_project_docs.py --check
 python3 scripts/check_skills.py
 python3 scripts/check_harness_configs.py
-python3 -m unittest -v tests/test_ai_onboard.py
+python3 -m unittest discover -v tests
+python3 scripts/test_deployments.py
 python3 scripts/check_site.py
 node --check site/app.js
 bash -n templates/link.sh

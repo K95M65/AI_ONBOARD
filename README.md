@@ -79,6 +79,7 @@ and install-package name.
 | [`package-manifest.json`](package-manifest.json) | Version, update channel, and capability-profile definitions |
 | [`scripts/ai_onboard.py`](scripts/ai_onboard.py) | Dependency-free lifecycle manager |
 | [`scripts/install_macos_update_notifier.py`](scripts/install_macos_update_notifier.py) | Reversible, opt-in macOS Notification Center scheduler |
+| [`scripts/test_deployments.py`](scripts/test_deployments.py) | Full temporary deployment smoke tests for Claude, Codex, and OpenCode |
 | [`scripts/sync_project_docs.py`](scripts/sync_project_docs.py) | Generates the live skill catalog and synchronizes README inventory counts |
 
 ## Quickstart
@@ -137,6 +138,21 @@ update is available.
 [`templates/link.sh`](templates/link.sh) remains as a legacy copy-based compatibility path. It is useful for
 simple wiring but does not provide lifecycle tracking.
 
+### Deployment smoke tests
+
+Exercise a complete managed install for every first-class harness before publishing a build:
+
+```bash
+python3 scripts/test_deployments.py
+python3 scripts/test_deployments.py --harness codex --verbose
+```
+
+Each isolated temporary project installs every capability profile plus agents, configs, notifications, and
+manual workflow foundations. The script validates the harness-specific layout, desired state, lockfile,
+user-config preservation, `status`, `doctor`, local-source update checks, sync and uninstall previews, and
+real cleanup. It does not require harness credentials or make model API calls. GitHub Actions runs the same
+contract as a Claude, Codex, and OpenCode matrix on every push and pull request.
+
 ## Website and documentation
 
 The website is a static artifact generated from the same repository people and agents inspect. Skill names,
@@ -148,7 +164,8 @@ python3 scripts/sync_project_docs.py          # regenerate catalog + README coun
 python3 scripts/sync_project_docs.py --check  # fail when they are stale
 python3 scripts/check_skills.py               # validate skill structure, links, and lexical trigger overlap
 python3 scripts/check_harness_configs.py       # validate Claude, Codex, and OpenCode project boundaries
-python3 -m unittest -v tests/test_ai_onboard.py # validate install, upgrade, adoption, and uninstall
+python3 -m unittest discover -v tests           # validate lifecycle and deployment contracts
+python3 scripts/test_deployments.py             # smoke-test all three complete harness deployments
 python3 -m http.server 4173 --directory site  # preview at http://localhost:4173
 ```
 

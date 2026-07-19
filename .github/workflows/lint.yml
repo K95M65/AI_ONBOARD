@@ -60,8 +60,22 @@ jobs:
       - name: Validate harness configurations
         run: python3 scripts/check_harness_configs.py
       - name: Test managed installation lifecycle
-        run: python3 -m unittest -v tests/test_ai_onboard.py
+        run: python3 -m unittest discover -v tests
       - name: Validate static site
         run: |
           python3 scripts/check_site.py
           node --check site/app.js
+
+  deploy-smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        harness: [claude, codex, opencode]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test complete ${{ matrix.harness }} deployment
+        run: python3 scripts/test_deployments.py --harness "${{ matrix.harness }}"
