@@ -14,13 +14,13 @@ jobs:
   dependency-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       # --- Node (uncomment if you use npm/pnpm/yarn) ---
-      # - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      # - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
       #   with: { node-version: 'lts/*' }
       # - run: npm audit --audit-level=high
       # --- Go (uncomment if you use Go) ---
-      # - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+      # - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
       #   with: { go-version: 'stable' }
       # - run: go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...
       - run: echo "Enable the dependency job(s) for your ecosystem."
@@ -28,7 +28,7 @@ jobs:
   secret-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           fetch-depth: 0            # full history so gitleaks scans past commits
       - uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc # v2
@@ -38,7 +38,7 @@ jobs:
   sast:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: returntocorp/semgrep-action@713efdd345f3035192eaa63f56867b88e63e4e5d # v1
         with:
           config: p/default          # or p/security-audit, p/owasp-top-ten
