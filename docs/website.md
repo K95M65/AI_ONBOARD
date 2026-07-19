@@ -15,8 +15,8 @@ The site should answer five questions in order:
 1. **What is broken?** Tool-specific instructions fragment and self-review makes “done” ambiguous.
 2. **What is the model?** Durable project context, on-demand procedures, and isolated agents solve different
    context problems.
-3. **How is it managed?** Capability profiles, desired state, a lockfile, checksums, backups, and staged
-   conflicts make install, upgrade, and removal inspectable.
+3. **How is it managed?** Capability profiles, desired state, a lockfile, checksums, backups, staged
+   conflicts, structured update checks, and opt-in notices make install, upgrade, and removal inspectable.
 4. **How does a request move?** An interactive router shows the orchestrator, specialists, review lenses,
    evidence, and release boundary for representative work.
 5. **What is the result?** A verified handoff records what changed, which checks passed, what shipped, and
@@ -34,7 +34,7 @@ The single page follows this sequence:
 
 ```text
 Promise → Problem → Three mechanisms → Managed lifecycle
-        → Interactive request router → Shared workflow
+        and update signal → Interactive request router → Shared workflow
         → Generated skill catalog → Verified result
 ```
 
@@ -85,6 +85,11 @@ managed profile selection. Keep both boundaries explicit in website copy and set
 GRILL are original AI_ONBOARD skills, are selected separately with `--workflow-foundations`, and run only
 after explicit user intent. When they appear in a route, mark them as manual opt-ins that are skipped by
 default rather than mandatory linear stages.
+
+Update notices follow the same opt-in principle. The site may present the portable update skill, native
+Claude/OpenCode `/ai-onboard-update` commands, Codex compatibility prompt, weekly GitHub check, and macOS
+notifier, but must not imply that AI_ONBOARD writes to a user's home directory or enables a scheduler
+without an explicit install action.
 
 Vendored upstream READMEs are excluded from project navigation edits. Preserve their source text and
 licenses.

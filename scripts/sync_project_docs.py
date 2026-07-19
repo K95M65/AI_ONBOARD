@@ -76,6 +76,7 @@ CATEGORIES = {
         "conventional-commit",
         "pr-description",
         "changelog",
+        "check-ai-onboard-updates",
         "gh-issue",
         "gh-pr",
         "gh-release",

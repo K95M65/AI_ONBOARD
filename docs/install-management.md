@@ -71,7 +71,7 @@ The installation has three layers:
 |------|---------|:-------:|
 | `ai-onboard.json` | Desired harnesses, profiles, features, repository, and update channel | Yes |
 | `.ai-onboard.lock.json` | Exact package version, source revision, checksums, ownership, and managed config keys | Yes |
-| `.ai-onboard/` | Installed manager, local backups, and staged conflicts | No; its nested `.gitignore` protects it |
+| `.ai-onboard/` | Installed manager, cached update status, local backups, and staged conflicts | No; its nested `.gitignore` protects it |
 
 Commit the desired state and lockfile with the project. A teammate can reproduce the locked state with:
 
@@ -88,10 +88,26 @@ misrepresent dirty files. A non-Git source records a `content:` digest; pass
 
 ```bash
 python3 .ai-onboard/bin/ai_onboard.py upgrade --check
+python3 .ai-onboard/bin/ai_onboard.py upgrade --check --cache --json
+python3 .ai-onboard/bin/ai_onboard.py upgrade --check --cache --notify
 python3 .ai-onboard/bin/ai_onboard.py upgrade --dry-run
 python3 .ai-onboard/bin/ai_onboard.py upgrade
 python3 .ai-onboard/bin/ai_onboard.py doctor
 ```
+
+The default check only prints a result and does not write to the project. Automation and notification
+options are explicit:
+
+| Option | Behavior |
+|--------|----------|
+| `--json` | Emits current/latest version, revision, digest, release classification, summary, notes URL, and check time |
+| `--cache` | Writes `.ai-onboard/update-status.json`; `doctor` surfaces a cached available update |
+| `--notify` | Sends a macOS Notification Center or Linux `notify-send` notice when an update exists |
+| `--exit-code` | Returns `10` when an update exists, `0` when current, and `2` for a check error |
+
+An applied `sync` or `upgrade` clears the cached notice so `doctor` does not report an update that already
+landed. Package release metadata classifies a change as `security`, `fix`, `feature`, or `maintenance`;
+the classification and summary come from committed package metadata, not generated marketing copy.
 
 The initial package channel is `edge`, which resolves the latest commit on `main`. Change
 `source.channel` in `ai-onboard.json` to `stable` after the repository publishes versioned GitHub Releases,
@@ -112,6 +128,56 @@ An upgrade follows these rules:
 Review and resolve conflicts manually, then run `doctor` again. Never put credentials or private data in
 the desired state, lockfile, or package templates.
 
+## Slash-command checks
+
+Install notification assets by adding `--notifications` to `install` or `adopt`.
+
+| Harness | Invocation | Installed source |
+|---------|------------|------------------|
+| Claude Code | `/ai-onboard-update` | `.claude/commands/ai-onboard-update.md` |
+| OpenCode | `/ai-onboard-update` | `.opencode/commands/ai-onboard-update.md` |
+| Codex | `$check-ai-onboard-updates` or natural language | Portable skill |
+| Codex compatibility prompt | `/prompts:ai-onboard-update` | Copy from `.ai-onboard/share/codex-prompts/ai-onboard-update.md` to `${CODEX_HOME:-~/.codex}/prompts/` |
+
+Codex custom prompts are deprecated, user-scoped, and loaded only when Codex starts. AI_ONBOARD therefore
+keeps the shared update workflow as a skill and does not write outside the project automatically. If the
+compatibility prompt is copied, restart Codex or open a new task before invoking it.
+
+Every command checks health, caches a structured update result, reports fixes separately from local drift,
+and previews an available upgrade. It never applies the upgrade without an explicit follow-up request.
+
+## Scheduled notifications
+
+`--notifications` installs `.github/workflows/ai-onboard-update-check.yml`. It runs weekly and on manual
+dispatch, writes the structured result to the job summary, and emits a failing warning when an update is
+available so normal GitHub Actions notifications can alert maintainers. Because `K95M65/AI_ONBOARD` is
+private, downstream repositories must add an `AI_ONBOARD_TOKEN` Actions secret with read access; no paid
+service is required.
+
+The workflow is copied on first install, but later package changes to an active workflow are always staged
+under `.ai-onboard/conflicts/` for human review rather than activated automatically.
+
+On macOS, install a project-scoped LaunchAgent:
+
+```bash
+python3 .ai-onboard/bin/install_macos_update_notifier.py \
+  install --target . --interval weekly
+
+python3 .ai-onboard/bin/install_macos_update_notifier.py \
+  status --target .
+
+python3 .ai-onboard/bin/install_macos_update_notifier.py \
+  uninstall --target .
+```
+
+The LaunchAgent runs the installed manager directly—without a shell—caches the result, and requests a
+Notification Center notice only when an update exists. Its label includes a hash of the absolute project
+path, so multiple projects do not collide. Run the notifier's `uninstall` action before moving the project.
+The main AI_ONBOARD uninstall automatically unloads and removes a matching notifier while the project
+remains at the same path; unrecognized or modified LaunchAgent files are preserved. If launchd still
+reports the notifier as loaded, uninstall stops before removing the manager and tells you which
+`launchctl bootout` command to retry.
+
 ## Adopt a legacy installation
 
 Use adoption to place an existing copy-based installation under lifecycle management:
@@ -131,6 +197,7 @@ Adoption does not change product files. Exact matches are recorded as `adopted`;
 unmanaged. Default uninstall preserves adopted content.
 
 For a legacy full-bundle installation, select all six profiles and add `--workflow-foundations`.
+Add `--notifications` only when the existing project should also adopt matching notification assets.
 
 ## Uninstall and cleanup
 
@@ -143,6 +210,7 @@ python3 .ai-onboard/bin/ai_onboard.py cleanup --keep-releases 2
 Default uninstall:
 
 - removes unchanged package-owned skills, agents, and manager files;
+- removes the cached update status and a matching project-scoped macOS notifier;
 - reverses only unchanged config keys or list entries that AI_ONBOARD added;
 - preserves `AGENTS.md`, desired state, adopted content, modified files, backups, and conflicts.
 

@@ -77,6 +77,24 @@ max_depth = 1
 Stable feature flags should normally be omitted so Codex can use current defaults. Remove obsolete keys
 rather than carrying them forward; inspect the installed release with `codex features list`.
 
+### Update-check workflow
+
+The portable `check-ai-onboard-updates` skill is the supported Codex workflow. Ask Codex to check
+AI_ONBOARD updates or invoke `$check-ai-onboard-updates`; it runs the installed manager, distinguishes
+upstream releases from local drift, and previews rather than applies an upgrade.
+
+Codex's older custom prompts are user-scoped and deprecated in favor of skills. If a user still wants an
+explicit slash prompt, copy the optional compatibility template after installing `--notifications`:
+
+```bash
+mkdir -p "${CODEX_HOME:-$HOME/.codex}/prompts"
+cp .ai-onboard/share/codex-prompts/ai-onboard-update.md \
+  "${CODEX_HOME:-$HOME/.codex}/prompts/ai-onboard-update.md"
+```
+
+Restart Codex or open a new task, then invoke `/prompts:ai-onboard-update`. The lifecycle manager does not
+write to a user's Codex home automatically.
+
 ### MCP servers
 
 Declare tools/data sources under `[mcp_servers]`:

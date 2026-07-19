@@ -81,6 +81,10 @@ Claude Code still accepts command definitions, but new reusable workflows should
 `.claude/skills/test/SKILL.md` becomes `/test`, can carry references or scripts, and can be either manually
 or model invoked.
 
+AI_ONBOARD's optional notification layer installs
+`.claude/commands/ai-onboard-update.md`; invoke it with `/ai-onboard-update` to check for fixes, cache the
+result for `doctor`, and preview an available upgrade without applying it.
+
 ```markdown
 ---
 name: test

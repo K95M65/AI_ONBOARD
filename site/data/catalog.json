@@ -1,7 +1,7 @@
 {
   "repository": "K95M65/AI_ONBOARD",
   "counts": {
-    "skills": 67,
+    "skills": 68,
     "agents": 6,
     "categories": 7,
     "mechanisms": 3
@@ -29,7 +29,7 @@
     },
     {
       "name": "Engineering & delivery",
-      "count": 14
+      "count": 15
     },
     {
       "name": "Research & communication",
@@ -85,6 +85,13 @@
       "category": "Engineering & delivery",
       "kind": "specialist",
       "path": "skills/changelog/SKILL.md"
+    },
+    {
+      "name": "check-ai-onboard-updates",
+      "description": "Checks a managed AI_ONBOARD installation for package updates, fixes, and security releases, reports drift separately from available releases, and offers a safe preview before applying an upgrade. Use when the user asks whether AI_ONBOARD is current, invokes the update-check workflow, or wants to review and apply an available bundle update.",
+      "category": "Engineering & delivery",
+      "kind": "specialist",
+      "path": "skills/check-ai-onboard-updates/SKILL.md"
     },
     {
       "name": "agents-sdk",

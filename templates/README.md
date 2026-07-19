@@ -13,6 +13,8 @@ Drop-in starter files. Copy what you need into a project root.
 | [`configs/claude.settings.json`](configs/claude.settings.json) | Claude Code | Conservative permissions and manual GOAL/GRILL activation |
 | [`configs/codex.config.toml`](configs/codex.config.toml) | Codex | Bounded project-level agent concurrency |
 | [`configs/opencode.json`](configs/opencode.json) | OpenCode | Conservative permissions, compaction, and watcher defaults |
+| [`commands/`](commands/) | Claude, Codex, OpenCode | Update-check slash commands and optional Codex compatibility prompt |
+| [`notifications/`](notifications/) | GitHub Actions | Free scheduled update notification template |
 | [`link.sh`](link.sh) | All tools | Legacy copy-based wiring without upgrade or uninstall tracking |
 
 The universal [`AGENTS.md`](../AGENTS.md) template lives at the repo root, not here — it's the source of
@@ -37,12 +39,12 @@ manager. Add capability profiles as needed and preview every lifecycle action:
 
 ```bash
 python3 .ai-onboard/bin/ai_onboard.py profile add security --dry-run
-python3 .ai-onboard/bin/ai_onboard.py upgrade --check
+python3 .ai-onboard/bin/ai_onboard.py upgrade --check --cache --json
 python3 .ai-onboard/bin/ai_onboard.py uninstall --dry-run
 ```
 
 See [managed installation, upgrades, and cleanup](../docs/install-management.md) for profiles, adoption,
-conflict handling, and recovery.
+conflict handling, notifications, slash commands, and recovery.
 
 ## Legacy copy path
 

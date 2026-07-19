@@ -1,0 +1,193 @@
+name: AI_ONBOARD update check
+
+on:
+  schedule:
+    - cron: "17 14 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compare locked and available releases
+        env:
+          AI_ONBOARD_TOKEN: ${{ secrets.AI_ONBOARD_TOKEN }}
+          PROJECT_REPOSITORY: ${{ github.repository }}
+          PROJECT_REVISION: ${{ github.sha }}
+          PROJECT_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64
+          import html
+          import json
+          import os
+          import re
+          import sys
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          API = "https://api.github.com"
+          RELEASE_CLASSIFICATIONS = {
+              "fix", "security", "feature", "maintenance"
+          }
+          VERSION_PATTERN = re.compile(
+              r"\d+\.\d+\.\d+(?:-[0-9A-Za-z]+"
+              r"(?:[.-][0-9A-Za-z]+)*)?"
+              r"(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?"
+          )
+
+          def clean(value, limit=280):
+              text = "".join(
+                  character
+                  for character in str(value)
+                  if ord(character) >= 32
+                  and not 127 <= ord(character) <= 159
+              )
+              return " ".join(text.split())[:limit]
+
+          def version(value):
+              value = clean(value, 64)
+              if not VERSION_PATTERN.fullmatch(value):
+                  raise ValueError("invalid package semantic version")
+              return value
+
+          def request_json(path, token):
+              request = urllib.request.Request(
+                  f"{API}/{path.lstrip('/')}",
+                  headers={
+                      "Accept": "application/vnd.github+json",
+                      "Authorization": f"Bearer {token}",
+                      "User-Agent": "AI_ONBOARD update checker",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                  },
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  return json.load(response)
+
+          def repository(value):
+              if not re.fullmatch(
+                  r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", value
+              ):
+                  raise ValueError("invalid repository in ai-onboard.json")
+              return value
+
+          def revision(value):
+              if not re.fullmatch(r"[A-Za-z0-9._/-]+", value):
+                  raise ValueError("invalid update channel")
+              return value
+
+          def content_json(repo, path, ref, token):
+              encoded_path = urllib.parse.quote(path, safe="/")
+              encoded_ref = urllib.parse.quote(ref, safe="")
+              payload = request_json(
+                  f"repos/{repo}/contents/{encoded_path}?ref={encoded_ref}",
+                  token,
+              )
+              return json.loads(
+                  base64.b64decode(payload["content"]).decode("utf-8")
+              )
+
+          project_repo = repository(os.environ["PROJECT_REPOSITORY"])
+          project_ref = revision(os.environ["PROJECT_REVISION"])
+          project_token = os.environ["PROJECT_TOKEN"]
+          desired = content_json(
+              project_repo, "ai-onboard.json", project_ref, project_token
+          )
+          lock = content_json(
+              project_repo,
+              ".ai-onboard.lock.json",
+              project_ref,
+              project_token,
+          )
+
+          source = desired.get("source", {})
+          source_repo = repository(
+              str(source.get("repository", "K95M65/AI_ONBOARD"))
+          )
+          channel = revision(str(source.get("channel", "stable")))
+          source_token = os.environ.get("AI_ONBOARD_TOKEN") or project_token
+
+          if channel == "stable":
+              release = request_json(
+                  f"repos/{source_repo}/releases/latest", source_token
+              )
+              ref = revision(str(release["tag_name"]))
+          elif channel == "edge":
+              ref = "main"
+          else:
+              ref = channel
+
+          encoded_ref = urllib.parse.quote(ref, safe="")
+          commit = request_json(
+              f"repos/{source_repo}/commits/{encoded_ref}", source_token
+          )
+          latest_revision = str(commit["sha"])
+          manifest = content_json(
+              source_repo,
+              "package-manifest.json",
+              latest_revision,
+              source_token,
+          )
+
+          current_version = version(lock.get("package_version"))
+          latest_version = version(manifest.get("version"))
+          update_available = (
+              str(lock.get("source_revision", "")) != latest_revision
+              or current_version != latest_version
+          )
+          release = manifest.get("release", {})
+          if not isinstance(release, dict):
+              raise ValueError("package release metadata must be an object")
+          classification = clean(
+              release.get("classification", "maintenance")
+          ).lower()
+          if classification not in RELEASE_CLASSIFICATIONS:
+              raise ValueError("invalid package release classification")
+          summary = clean(release.get("summary", ""))
+          notes_url = clean(release.get("notes_url", ""), 2048)
+          if notes_url:
+              parsed_notes = urllib.parse.urlparse(notes_url)
+              if (
+                  parsed_notes.scheme != "https"
+                  or not parsed_notes.netloc
+                  or any(
+                      character.isspace() or character == "`"
+                      for character in notes_url
+                  )
+              ):
+                  raise ValueError("package release notes URL must use HTTPS")
+
+          lines = [
+              "<h2>AI_ONBOARD update check</h2>",
+              "<ul>",
+              f"<li>Current: <code>{html.escape(current_version)}</code></li>",
+              f"<li>Latest: <code>{html.escape(latest_version)}</code></li>",
+              "<li>Classification: "
+              f"<code>{html.escape(classification)}</code></li>",
+              "<li>Update available: "
+              f"<code>{str(update_available).lower()}</code></li>",
+          ]
+          if summary:
+              lines.append(
+                  f"<li>Summary: <code>{html.escape(summary)}</code></li>"
+              )
+          if notes_url:
+              lines.append(
+                  f"<li>Notes: <code>{html.escape(notes_url)}</code></li>"
+              )
+          lines.append("</ul>")
+          with open(
+              os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8"
+          ) as handle:
+              handle.write("\n".join(lines) + "\n")
+
+          if update_available:
+              print("AI_ONBOARD update available; review the job summary.")
+              sys.exit(1)
+          print("AI_ONBOARD is current.")
+          PY

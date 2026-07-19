@@ -1656,7 +1656,7 @@ h1 {
 .lifecycle-model {
   grid-column: 2;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   margin: 0;
   padding: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.28);
@@ -1706,7 +1706,7 @@ h1 {
 .lifecycle-console {
   grid-column: 2;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   background: var(--lime);
   color: var(--ink);
 }
@@ -1719,6 +1719,14 @@ h1 {
 
 .lifecycle-command:last-child {
   border-right: 0;
+}
+
+.lifecycle-command:nth-of-type(2n) {
+  border-right: 0;
+}
+
+.lifecycle-command:nth-of-type(-n + 2) {
+  border-bottom: 1px solid var(--ink);
 }
 
 .lifecycle-command span {
@@ -2266,6 +2274,10 @@ h1 {
 
   .lifecycle-command {
     border-bottom-color: var(--ink);
+  }
+
+  .lifecycle-command:nth-of-type(2n) {
+    border-right: 0;
   }
 
   .result-section > .result-copy,

@@ -14,6 +14,7 @@ import copy
 import hashlib
 import json
 import os
+import plistlib
 import re
 import shutil
 import subprocess
@@ -26,6 +27,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -34,8 +36,19 @@ SCHEMA = 1
 DESIRED_NAME = "ai-onboard.json"
 LOCK_NAME = ".ai-onboard.lock.json"
 STATE_DIR = ".ai-onboard"
+UPDATE_STATUS_NAME = f"{STATE_DIR}/update-status.json"
 SUPPORTED_HARNESSES = ("claude", "codex", "opencode")
 DEFAULT_REPOSITORY = "K95M65/AI_ONBOARD"
+UPDATE_AVAILABLE_EXIT = 10
+RELEASE_CLASSIFICATIONS = {"fix", "security", "feature", "maintenance"}
+VERSION_PATTERN = re.compile(
+    r"\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?"
+    r"(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?"
+)
+NOTIFIER_LABEL_PREFIX = "com.rsthrives.ai-onboard-update"
+REVIEW_REQUIRED_ARTIFACTS = {
+    ".github/workflows/ai-onboard-update-check.yml",
+}
 MAX_ARCHIVE_BYTES = 100 * 1024 * 1024
 MAX_EXTRACTED_BYTES = 256 * 1024 * 1024
 MAX_ARCHIVE_MEMBERS = 20_000
@@ -46,6 +59,11 @@ MANAGED_ARTIFACT_PATTERNS = (
     re.compile(r"\.codex/agents/[a-z0-9]+(?:-[a-z0-9]+)*\.toml"),
     re.compile(r"\.opencode/agents/[a-z0-9]+(?:-[a-z0-9]+)*\.md"),
     re.compile(r"\.ai-onboard/bin/ai_onboard\.py"),
+    re.compile(r"\.ai-onboard/bin/install_macos_update_notifier\.py"),
+    re.compile(r"\.ai-onboard/share/codex-prompts/ai-onboard-update\.md"),
+    re.compile(r"\.claude/commands/ai-onboard-update\.md"),
+    re.compile(r"\.opencode/commands/ai-onboard-update\.md"),
+    re.compile(r"\.github/workflows/ai-onboard-update-check\.yml"),
 )
 ALLOWED_CONFIG_VALUES: dict[str, dict[str, Any]] = {
     ".claude/settings.json": {
@@ -111,6 +129,14 @@ def read_json(path: Path) -> dict[str, Any]:
         raise LifecycleError(f"cannot read JSON {path}: {exc}") from exc
     if not isinstance(value, dict):
         raise LifecycleError(f"{path} must contain a JSON object")
+    return value
+
+
+def validate_version(value: object) -> str:
+    if not isinstance(value, str) or len(value) > 64:
+        raise LifecycleError("package version must be a bounded semantic version")
+    if not VERSION_PATTERN.fullmatch(value):
+        raise LifecycleError(f"invalid package semantic version: {value!r}")
     return value
 
 
@@ -241,7 +267,10 @@ def package_content_digest(root: Path) -> str:
         root / "package-manifest.json",
         root / "site/data/catalog.json",
         root / "scripts/ai_onboard.py",
+        root / "scripts/install_macos_update_notifier.py",
         root / "templates/configs",
+        root / "templates/commands",
+        root / "templates/notifications",
         root / "agents",
         root / "skills",
     ]
@@ -286,7 +315,10 @@ def git_revision(root: Path, content_digest: str) -> str:
         "package-manifest.json",
         "site/data/catalog.json",
         "scripts/ai_onboard.py",
+        "scripts/install_macos_update_notifier.py",
         "templates/configs",
+        "templates/commands",
+        "templates/notifications",
         "agents",
         "skills",
     )
@@ -320,6 +352,7 @@ def load_source(root: Path, revision: str | None = None) -> Source:
         raise LifecycleError(
             f"unsupported package manifest schema {manifest.get('schema')!r}"
         )
+    validate_version(manifest.get("version"))
     content_digest = package_content_digest(root)
     return Source(
         root,
@@ -689,6 +722,49 @@ def desired_artifacts(
                 artifacts[relative] = Artifact(
                     path, relative, str(path.relative_to(source.root))
                 )
+
+    if features.get("notifications"):
+        notification_artifacts = []
+        if "claude" in harnesses:
+            notification_artifacts.append(
+                (
+                    "templates/commands/claude/ai-onboard-update.md",
+                    ".claude/commands/ai-onboard-update.md",
+                )
+            )
+        if "opencode" in harnesses:
+            notification_artifacts.append(
+                (
+                    "templates/commands/opencode/ai-onboard-update.md",
+                    ".opencode/commands/ai-onboard-update.md",
+                )
+            )
+        if "codex" in harnesses:
+            notification_artifacts.append(
+                (
+                    "templates/commands/codex/ai-onboard-update.md",
+                    f"{STATE_DIR}/share/codex-prompts/ai-onboard-update.md",
+                )
+            )
+        notification_artifacts.append(
+            (
+                "templates/notifications/github/ai-onboard-update-check.yml",
+                ".github/workflows/ai-onboard-update-check.yml",
+            )
+        )
+        macos_installer = source.root / "scripts/install_macos_update_notifier.py"
+        if macos_installer.is_file():
+            notification_artifacts.append(
+                (
+                    "scripts/install_macos_update_notifier.py",
+                    f"{STATE_DIR}/bin/install_macos_update_notifier.py",
+                )
+            )
+        for source_relative, destination in notification_artifacts:
+            path = source_artifact(source.root, source.root / source_relative)
+            artifacts[destination] = Artifact(
+                path, destination, source_relative
+            )
 
     if include_manager:
         packaged_manager = source.root / "scripts" / "ai_onboard.py"
@@ -1201,6 +1277,18 @@ def apply_artifact(
             return previous
         if current_hash == previous.get("sha256"):
             if current_hash != incoming_hash and not adopt_only:
+                if artifact.destination in REVIEW_REQUIRED_ARTIFACTS:
+                    stage_conflict(
+                        artifact.source,
+                        target,
+                        artifact.destination,
+                        dry_run,
+                    )
+                    print(
+                        f"  review required {artifact.destination}: "
+                        "preserved active workflow"
+                    )
+                    return previous
                 backup_path(target, artifact.destination, dry_run)
                 copy_path(artifact.source, destination, dry_run)
                 print(f"  upgraded {artifact.destination}")
@@ -1278,6 +1366,7 @@ def build_desired(
     agents: bool,
     configs: bool,
     workflow_foundations: bool,
+    notifications: bool,
 ) -> dict[str, Any]:
     repository = str(
         source.manifest.get("repository", DEFAULT_REPOSITORY)
@@ -1291,6 +1380,7 @@ def build_desired(
         "features": {
             "agents": agents,
             "configs": configs,
+            "notifications": notifications,
             "workflow_foundations": workflow_foundations,
         },
     }
@@ -1315,6 +1405,8 @@ def load_lock(target: Path) -> dict[str, Any]:
     lock = read_json(path)
     if lock.get("schema") != SCHEMA:
         raise LifecycleError(f"unsupported lock schema {lock.get('schema')!r}")
+    if "package_version" in lock:
+        validate_version(lock["package_version"])
     artifacts = lock.get("artifacts", [])
     configs = lock.get("configs", [])
     if not isinstance(artifacts, list) or not isinstance(configs, list):
@@ -1585,6 +1677,7 @@ def command_install(args: argparse.Namespace, source: Source, target: Path) -> i
         agents=args.agents,
         configs=args.configs,
         workflow_foundations=args.workflow_foundations,
+        notifications=args.notifications,
     )
     print(
         f"Installing AI_ONBOARD {source.manifest['version']} "
@@ -1608,6 +1701,7 @@ def command_adopt(args: argparse.Namespace, source: Source, target: Path) -> int
         agents=args.agents,
         configs=args.configs,
         workflow_foundations=args.workflow_foundations,
+        notifications=args.notifications,
     )
     print("Adopting exact existing AI_ONBOARD artifacts; no product files are changed")
     reconcile(source, target, desired, adopt_only=True, dry_run=args.dry_run)
@@ -1622,7 +1716,257 @@ def command_sync(
     validate_profiles(source, list(desired.get("profiles", [])))
     print(f"{label} AI_ONBOARD {source.manifest['version']}")
     reconcile(source, target, desired, dry_run=args.dry_run)
+    if not args.dry_run:
+        managed_path(target, UPDATE_STATUS_NAME).unlink(missing_ok=True)
     return 0
+
+
+def display_text(value: object, limit: int = 280) -> str:
+    text = "".join(
+        character
+        for character in str(value)
+        if ord(character) >= 32 and not 127 <= ord(character) <= 159
+    )
+    return " ".join(text.split())[:limit]
+
+
+def release_metadata(source: Source) -> dict[str, str]:
+    raw = source.manifest.get("release", {})
+    if not isinstance(raw, dict):
+        raise LifecycleError("package release metadata must be an object")
+    classification = str(raw.get("classification", "maintenance")).lower()
+    if classification not in RELEASE_CLASSIFICATIONS:
+        raise LifecycleError(
+            "package release classification must be fix, security, feature, "
+            "or maintenance"
+        )
+    summary = display_text(raw.get("summary", ""))
+    notes_url = display_text(raw.get("notes_url", ""), 2048)
+    if notes_url:
+        parsed = urllib.parse.urlparse(notes_url)
+        if parsed.scheme != "https" or not parsed.netloc:
+            raise LifecycleError("package release notes URL must use HTTPS")
+    return {
+        "classification": classification,
+        "summary": summary,
+        "notes_url": notes_url,
+    }
+
+
+def build_update_status(
+    old: dict[str, Any], source: Source
+) -> dict[str, Any]:
+    changed = (
+        old.get("package_version") != source.manifest.get("version")
+        or old.get("source_revision") != source.revision
+        or old.get("source_digest") != source.content_digest
+    )
+    checked_at = (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    return {
+        "schema": SCHEMA,
+        "checked_at": checked_at,
+        "update_available": changed,
+        "current": {
+            "version": str(old.get("package_version", "none")),
+            "revision": str(old.get("source_revision", "")),
+            "digest": str(old.get("source_digest", "")),
+        },
+        "latest": {
+            "version": str(source.manifest.get("version", "unknown")),
+            "revision": source.revision,
+            "digest": source.content_digest,
+        },
+        "release": release_metadata(source),
+    }
+
+
+def print_update_status(status: dict[str, Any], as_json: bool) -> None:
+    if as_json:
+        print(json.dumps(status, sort_keys=True))
+        return
+    current = status["current"]
+    latest = status["latest"]
+    current_version = display_text(current["version"], 64)
+    latest_version = display_text(latest["version"], 64)
+    print(
+        f"Update {'available' if status['update_available'] else 'not needed'}: "
+        f"{current_version} -> {latest_version}"
+    )
+    if status["update_available"]:
+        release = status["release"]
+        label = str(release["classification"]).capitalize()
+        if release["summary"]:
+            print(f"{label}: {release['summary']}")
+        if release["notes_url"]:
+            print(f"Release notes: {release['notes_url']}")
+
+
+def send_update_notification(status: dict[str, Any]) -> None:
+    if not status.get("update_available"):
+        return
+    release = status["release"]
+    latest = status["latest"]
+    title = "AI_ONBOARD update available"
+    classification = display_text(release["classification"], 32).capitalize()
+    latest_version = display_text(latest["version"], 64)
+    summary = display_text(release["summary"])
+    message = (
+        f"{classification} {latest_version}: "
+        f"{summary or 'Review the available update.'}"
+    )
+    if sys.platform == "darwin" and shutil.which("osascript"):
+        script = (
+            "on run argv\n"
+            "display notification (item 1 of argv) with title (item 2 of argv)\n"
+            "end run"
+        )
+        subprocess.run(
+            ["osascript", "-e", script, message, title],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return
+    if sys.platform.startswith("linux") and shutil.which("notify-send"):
+        subprocess.run(
+            ["notify-send", title, message],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return
+    print(
+        "Desktop notification unavailable; the update result was still recorded.",
+        file=sys.stderr,
+    )
+
+
+def show_cached_update_status(target: Path) -> None:
+    path = managed_path(target, UPDATE_STATUS_NAME)
+    if not path.exists():
+        return
+    if not path.is_file():
+        print(f"  warning: update status is not a regular file: {path}")
+        return
+    try:
+        status = read_json(path)
+    except LifecycleError as exc:
+        print(f"  warning: {exc}")
+        return
+    if status.get("schema") != SCHEMA:
+        print("  warning: cached update status has an unsupported schema")
+        return
+    if status.get("update_available") is not True:
+        return
+    latest = status.get("latest")
+    release = status.get("release")
+    if not isinstance(latest, dict) or not isinstance(release, dict):
+        print("  warning: cached update status has invalid fields")
+        return
+    try:
+        version = validate_version(latest.get("version"))
+    except LifecycleError as exc:
+        print(f"  warning: cached update status has {exc}")
+        return
+    classification = display_text(
+        release.get("classification", "maintenance"), 32
+    ).lower()
+    if classification not in RELEASE_CLASSIFICATIONS:
+        print("  warning: cached update status has invalid classification")
+        return
+    print(f"Update available: {version} ({classification})")
+    summary = display_text(release.get("summary", ""))
+    if summary:
+        print(f"  {summary}")
+    notes_url = display_text(release.get("notes_url", ""), 2048)
+    if notes_url:
+        parsed = urllib.parse.urlparse(notes_url)
+        if parsed.scheme == "https" and parsed.netloc:
+            print(f"  {notes_url}")
+        else:
+            print("  warning: cached release notes URL is invalid")
+
+
+def macos_notifier_label(target: Path) -> str:
+    identity = hashlib.sha256(str(target.resolve()).encode()).hexdigest()[:12]
+    return f"{NOTIFIER_LABEL_PREFIX}.{identity}"
+
+
+def remove_macos_update_notifier(
+    target: Path,
+    dry_run: bool,
+) -> None:
+    if sys.platform != "darwin":
+        return
+    label = macos_notifier_label(target)
+    destination = (
+        Path.home() / "Library" / "LaunchAgents" / f"{label}.plist"
+    )
+    if not destination.exists() and not destination.is_symlink():
+        return
+    if destination.is_symlink() or not destination.is_file():
+        print(f"  preserved unexpected notifier path {destination}")
+        return
+    try:
+        with destination.open("rb") as handle:
+            payload = plistlib.load(handle)
+    except (OSError, plistlib.InvalidFileException) as exc:
+        print(f"  preserved unreadable notifier {destination}: {exc}")
+        return
+    expected_arguments = [
+        str(target / f"{STATE_DIR}/bin/ai_onboard.py"),
+        "--target",
+        str(target),
+        "upgrade",
+        "--check",
+        "--cache",
+        "--notify",
+    ]
+    arguments = payload.get("ProgramArguments")
+    if (
+        payload.get("Label") != label
+        or not isinstance(arguments, list)
+        or len(arguments) != len(expected_arguments) + 1
+        or arguments[1:] != expected_arguments
+    ):
+        print(f"  preserved unrecognized notifier {destination}")
+        return
+    if dry_run:
+        print(f"  would remove macOS update notifier {label}")
+        return
+    service = f"gui/{os.getuid()}/{label}"
+    try:
+        subprocess.run(
+            ["launchctl", "bootout", service],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        loaded = (
+            subprocess.run(
+                ["launchctl", "print", service],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).returncode
+            == 0
+        )
+    except OSError as exc:
+        raise LifecycleError(
+            f"cannot unload macOS update notifier {label}: {exc}"
+        ) from exc
+    if loaded:
+        raise LifecycleError(
+            f"macOS update notifier {label} remains loaded; "
+            f"run 'launchctl bootout {service}' and retry"
+        )
+    destination.unlink(missing_ok=True)
+    print(f"  removed macOS update notifier {label}")
 
 
 def command_status(target: Path, verbose: bool = False) -> int:
@@ -1709,6 +2053,7 @@ def command_doctor(target: Path) -> int:
         issues += 1
     status = command_status(target)
     issues += status
+    show_cached_update_status(target)
     conflicts = managed_path(target, f"{STATE_DIR}/conflicts")
     if conflicts.is_dir() and any(path.is_file() for path in conflicts.rglob("*")):
         print(f"  warning: unresolved conflicts in {conflicts}")
@@ -1735,6 +2080,14 @@ def command_uninstall(args: argparse.Namespace, target: Path) -> int:
                     f"cannot uninstall from invalid TOML {path}: {exc}"
                 ) from exc
     print("Uninstalling managed AI_ONBOARD artifacts")
+    remove_macos_update_notifier(target, dry_run=args.dry_run)
+    update_status = managed_path(target, UPDATE_STATUS_NAME)
+    if update_status.is_symlink() or update_status.is_file():
+        if not args.dry_run:
+            update_status.unlink(missing_ok=True)
+        print(f"  removed {UPDATE_STATUS_NAME}")
+    elif update_status.exists():
+        print(f"  preserved unexpected update status path {update_status}")
     for record in sorted(
         lock.get("artifacts", []),
         key=lambda item: len(str(item.get("path", ""))),
@@ -1829,6 +2182,11 @@ def add_install_options(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument("--agents", action="store_true")
     parser.add_argument("--configs", action="store_true")
+    parser.add_argument(
+        "--notifications",
+        action="store_true",
+        help="Install slash-command, scheduled-check, and notifier assets",
+    )
     parser.add_argument("--workflow-foundations", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
 
@@ -1852,6 +2210,26 @@ def build_parser() -> argparse.ArgumentParser:
     for name in ("sync", "upgrade"):
         command = subparsers.add_parser(name)
         command.add_argument("--check", action="store_true")
+        command.add_argument(
+            "--json",
+            action="store_true",
+            help="Emit a machine-readable update result (with --check)",
+        )
+        command.add_argument(
+            "--cache",
+            action="store_true",
+            help="Save the update result for doctor (with --check)",
+        )
+        command.add_argument(
+            "--notify",
+            action="store_true",
+            help="Send a desktop notice when an update exists (with --check)",
+        )
+        command.add_argument(
+            "--exit-code",
+            action="store_true",
+            help=f"Return {UPDATE_AVAILABLE_EXIT} when an update exists",
+        )
         command.add_argument("--dry-run", action="store_true")
 
     status = subparsers.add_parser("status")
@@ -1905,6 +2283,13 @@ def main() -> int:
             if args.command == "profile":
                 return command_profile(args, source, target)
             if args.command in {"sync", "upgrade"}:
+                check_options = (
+                    args.json or args.cache or args.notify or args.exit_code
+                )
+                if check_options and not args.check:
+                    raise LifecycleError(
+                        "--json, --cache, --notify, and --exit-code require --check"
+                    )
                 old = load_lock(target)
                 if (
                     args.command == "sync"
@@ -1914,17 +2299,17 @@ def main() -> int:
                     raise LifecycleError(
                         "locked source content does not match its recorded digest"
                     )
-                changed = (
-                    old.get("package_version") != source.manifest.get("version")
-                    or old.get("source_revision") != source.revision
-                    or old.get("source_digest") != source.content_digest
-                )
                 if args.check:
-                    print(
-                        f"Update {'available' if changed else 'not needed'}: "
-                        f"{old.get('package_version', 'none')} -> "
-                        f"{source.manifest.get('version')}"
-                    )
+                    status = build_update_status(old, source)
+                    if args.cache:
+                        write_json(
+                            managed_path(target, UPDATE_STATUS_NAME), status
+                        )
+                    if args.notify:
+                        send_update_notification(status)
+                    print_update_status(status, args.json)
+                    if args.exit_code and status["update_available"]:
+                        return UPDATE_AVAILABLE_EXIT
                     return 0
                 return command_sync(
                     args,

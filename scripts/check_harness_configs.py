@@ -147,6 +147,69 @@ def validate_paths_and_docs(errors: list[str]) -> None:
     if missing_agents:
         errors.append(f".opencode/agents: missing {', '.join(missing_agents)}")
 
+    for harness in ("claude", "opencode"):
+        template = (
+            ROOT
+            / "templates"
+            / "commands"
+            / harness
+            / "ai-onboard-update.md"
+        )
+        realized = (
+            ROOT / f".{harness}" / "commands" / "ai-onboard-update.md"
+        )
+        if not template.is_file() or not realized.is_file():
+            errors.append(
+                f"{harness}: update-check command template and realization are required"
+            )
+        elif template.read_bytes() != realized.read_bytes():
+            errors.append(
+                f"{harness}: update-check command must match its canonical template"
+            )
+    for required_path in (
+        ROOT
+        / "templates"
+        / "commands"
+        / "codex"
+        / "ai-onboard-update.md",
+        ROOT
+        / "templates"
+        / "notifications"
+        / "github"
+        / "ai-onboard-update-check.yml",
+        ROOT / "scripts" / "install_macos_update_notifier.py",
+    ):
+        if not required_path.is_file():
+            errors.append(f"{required_path}: required notification asset is missing")
+
+    workflow_path = (
+        ROOT
+        / "templates"
+        / "notifications"
+        / "github"
+        / "ai-onboard-update-check.yml"
+    )
+    if workflow_path.is_file():
+        workflow = workflow_path.read_text(encoding="utf-8")
+        for forbidden in ("uses:", "actions/checkout", "subprocess"):
+            if forbidden in workflow:
+                errors.append(
+                    f"{workflow_path}: scheduled checker must not contain "
+                    f"{forbidden!r}"
+                )
+        for required in (
+            "api.github.com",
+            'source.get("repository"',
+            'source.get("channel"',
+            "VERSION_PATTERN",
+            "RELEASE_CLASSIFICATIONS",
+        ):
+            if required not in workflow:
+                errors.append(
+                    f"{workflow_path}: scheduled checker is missing "
+                    f"{required!r}"
+                )
+
     docs = "\n".join(
         path.read_text(encoding="utf-8")
         for path in (
@@ -179,6 +242,18 @@ def validate_package_manifest(errors: list[str]) -> None:
         errors.append(f"{path}: version must be semantic major.minor.patch")
     if data.get("default_channel") not in {"stable", "edge"}:
         errors.append(f"{path}: default_channel must be stable or edge")
+    release = data.get("release", {})
+    if release.get("classification") not in {
+        "fix",
+        "security",
+        "feature",
+        "maintenance",
+    }:
+        errors.append(f"{path}: release classification is invalid")
+    if not str(release.get("summary", "")).strip():
+        errors.append(f"{path}: release summary is required")
+    if not str(release.get("notes_url", "")).startswith("https://"):
+        errors.append(f"{path}: release notes URL must use HTTPS")
 
     catalog = load_json(ROOT / "site" / "data" / "catalog.json", errors)
     categories = {

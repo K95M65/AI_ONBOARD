@@ -7,7 +7,7 @@ directory (opencode also reads the `.claude/skills` and `.agents/skills` trees, 
 [Explore and filter the live skills map](https://k95m65.github.io/AI_ONBOARD/#catalog).
 
 <!-- generated:skills-inventory:start -->
-**67 portable skills · 7 capability groups · one shared format.**
+**68 portable skills · 7 capability groups · one shared format.**
 <!-- generated:skills-inventory:end -->
 
 | Harness | Personal | Project (team-shared) |

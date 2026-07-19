@@ -1,0 +1,4 @@
+interface:
+  display_name: "Check AI_ONBOARD updates"
+  short_description: "Report available fixes and preview safe upgrades"
+  default_prompt: "Use $check-ai-onboard-updates to check this managed AI_ONBOARD installation for updates or fixes, report the result, and do not apply an upgrade unless I ask."

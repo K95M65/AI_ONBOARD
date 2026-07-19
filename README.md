@@ -24,7 +24,7 @@ and install-package name.
 > skill invocation; the user does not need to type the exact skill name.
 
 <!-- generated:project-inventory:start -->
-- **67** portable skills across **7** capability groups
+- **68** portable skills across **7** capability groups
 - **6** independent reference subagents for research, review, and verification
 - **3** composable mechanisms: project context, on-demand skills, and isolated subagents
 <!-- generated:project-inventory:end -->
@@ -69,6 +69,8 @@ and install-package name.
 | [`docs/website.md`](docs/website.md) | Website strategy, information architecture, generated-data contract, and publishing workflow |
 | `docs/setup/` | Per-tool setup guides (Claude Code, Codex, OpenCode, Cursor, Gemini CLI) |
 | `templates/configs/` | Conservative project-config starters for Claude Code, Codex, and OpenCode |
+| `templates/commands/` | Portable update-check slash commands and the optional Codex compatibility prompt |
+| `templates/notifications/` | Opt-in scheduled GitHub notification workflow |
 | [`agents/`](agents/) | Reference subagents (researcher, reviewer, verifier, security/design lenses) |
 | [`examples/`](examples/) | Worked end-to-end setups — a full-stack monorepo wired for Claude Code + Codex |
 | `skills/` | A library of reusable, portable skills |
@@ -76,6 +78,7 @@ and install-package name.
 | [`site/`](site/) | Dependency-free source for the interactive GitHub Pages website |
 | [`package-manifest.json`](package-manifest.json) | Version, update channel, and capability-profile definitions |
 | [`scripts/ai_onboard.py`](scripts/ai_onboard.py) | Dependency-free lifecycle manager |
+| [`scripts/install_macos_update_notifier.py`](scripts/install_macos_update_notifier.py) | Reversible, opt-in macOS Notification Center scheduler |
 | [`scripts/sync_project_docs.py`](scripts/sync_project_docs.py) | Generates the live skill catalog and synchronizes README inventory counts |
 
 ## Quickstart
@@ -104,13 +107,32 @@ and install-package name.
 
    ```bash
    python3 .ai-onboard/bin/ai_onboard.py status
-   python3 .ai-onboard/bin/ai_onboard.py upgrade --check
+   python3 .ai-onboard/bin/ai_onboard.py upgrade --check --cache --json
    python3 .ai-onboard/bin/ai_onboard.py uninstall --dry-run
    ```
 
 The manager preserves divergent user files, merges only owned configuration keys, stages incoming conflicts,
 and removes only unchanged managed content. See [`docs/install-management.md`](docs/install-management.md)
 for adoption, locked sync, upgrades, cleanup, recovery, and uninstall behavior.
+
+Add `--notifications` to the install command to opt into `/ai-onboard-update` for Claude Code and
+OpenCode, a Codex compatibility prompt,
+and a weekly GitHub Actions check. The portable `check-ai-onboard-updates` skill remains the preferred
+cross-harness workflow. Codex users who specifically want a slash prompt can copy the installed template
+to `~/.codex/prompts/` and invoke `/prompts:ai-onboard-update`; Codex custom prompts are user-scoped and
+deprecated in favor of skills, so the manager never writes there silently.
+
+For a free local macOS notification:
+
+```bash
+python3 .ai-onboard/bin/install_macos_update_notifier.py \
+  install --target . --interval weekly
+```
+
+Update checks classify releases as `security`, `fix`, `feature`, or `maintenance`. Plain
+`upgrade --check` stays read-only; `--cache` records the result for `doctor`, `--notify` sends a desktop
+notice when supported, `--json` provides a stable machine contract, and `--exit-code` returns `10` when an
+update is available.
 
 [`templates/link.sh`](templates/link.sh) remains as a legacy copy-based compatibility path. It is useful for
 simple wiring but does not provide lifecycle tracking.

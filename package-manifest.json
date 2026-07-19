@@ -1,9 +1,14 @@
 {
   "schema": 1,
   "package": "ai-onboard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "repository": "K95M65/AI_ONBOARD",
   "default_channel": "edge",
+  "release": {
+    "classification": "feature",
+    "summary": "Structured update checks, cached fix notices, portable slash commands, and opt-in scheduled notifications.",
+    "notes_url": "https://github.com/K95M65/AI_ONBOARD/releases"
+  },
   "profiles": {
     "core": {
       "description": "Repository delivery, testing, debugging, review, and maintenance workflows.",

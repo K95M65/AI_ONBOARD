@@ -12,12 +12,14 @@ on-demand skills and independent agents begin.
 For new projects, use the [managed installer](../install-management.md) to select harnesses and capability
 profiles, preserve a lockfile, and gain safe upgrade, cleanup, and uninstall commands. The guides below
 explain each harness's native behavior; the manager applies those decisions without replacing `AGENTS.md`.
+The core profile includes the portable update-check skill. Add `--notifications` for native
+Claude/OpenCode slash commands, the optional Codex compatibility-prompt source, and scheduled notices.
 
 | Guide | Native file | Config surface |
 |-------|-------------|----------------|
 | [Claude Code](claude-code.md) | `CLAUDE.md` + `.claude/` | settings, commands, subagents, skills, hooks |
-| [Codex CLI](codex.md) | `AGENTS.md` | `~/.codex/config.toml`, profiles, MCP |
-| [OpenCode](opencode.md) | `AGENTS.md` | `opencode.json`, agents, permissions, compaction, MCP |
+| [Codex CLI](codex.md) | `AGENTS.md` | `~/.codex/config.toml`, profiles, skills, optional compatibility prompts, MCP |
+| [OpenCode](opencode.md) | `AGENTS.md` | `opencode.json`, agents, slash commands, permissions, compaction, MCP |
 | [Cursor](cursor.md) | `.cursor/rules/*.mdc` | scoped/auto-attached rules |
 | [Gemini CLI](gemini-cli.md) | `GEMINI.md` | `.gemini/settings.json`, MCP |
 

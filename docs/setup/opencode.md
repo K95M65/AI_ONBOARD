@@ -51,6 +51,10 @@ You are a security reviewer. Flag injection, authz, and secret-handling issues..
 Reusable prompts live at `.opencode/commands/<name>.md` and are invoked as `/name`. They support
 `$ARGUMENTS` and shell injection with the `` !`command` `` syntax.
 
+AI_ONBOARD's optional notification layer installs
+`.opencode/commands/ai-onboard-update.md`; invoke `/ai-onboard-update` for a health check, structured
+release check, and non-mutating upgrade preview.
+
 ### MCP servers
 
 ```json

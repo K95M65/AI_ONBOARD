@@ -87,7 +87,7 @@
         </section>
         <dl class="system-counts" aria-label="Repository inventory">
           <div>
-            <dt data-count="skills">67</dt>
+            <dt data-count="skills">68</dt>
             <dd>portable skills</dd>
           </div>
           <div>
@@ -173,10 +173,10 @@
         <div class="section-index" aria-hidden="true">03 / LIFECYCLE</div>
         <div class="lifecycle-heading">
           <p class="eyebrow">Portable does not mean disposable</p>
-          <h2 id="lifecycle-title">Install deliberately.<br>Upgrade without surprises.</h2>
+          <h2 id="lifecycle-title">Install deliberately.<br> Upgrade without surprises.</h2>
           <p>
             Select only the capability profiles a project needs. AI_ONBOARD records the desired state,
-            locks the exact source, and protects anything the user has changed.
+            locks the exact source, protects anything the user has changed, and can signal when fixes land.
           </p>
         </div>
         <ol class="lifecycle-model">
@@ -198,6 +198,12 @@
             <code>.ai-onboard/conflicts/</code>
             <p>Modified files are never overwritten or removed; incoming conflicts are staged for review.</p>
           </li>
+          <li>
+            <span>04 / SIGNAL</span>
+            <h3>Know what changed</h3>
+            <code>.ai-onboard/update-status.json</code>
+            <p>Opt-in checks classify security, fix, feature, and maintenance releases without auto-upgrading.</p>
+          </li>
         </ol>
         <section class="lifecycle-console" aria-labelledby="lifecycle-commands-title">
           <h3 class="visually-hidden" id="lifecycle-commands-title">Example lifecycle commands</h3>
@@ -206,8 +212,12 @@
             <code>python3 …/ai_onboard.py install --profile core --profile product</code>
           </div>
           <div class="lifecycle-command">
-            <span>Preview an available update</span>
-            <code>python3 .ai-onboard/bin/ai_onboard.py upgrade --check</code>
+            <span>Check and cache release status</span>
+            <code>python3 .ai-onboard/bin/ai_onboard.py upgrade --check --cache --json</code>
+          </div>
+          <div class="lifecycle-command">
+            <span>Invoke from an agent</span>
+            <code>core → $check-ai-onboard-updates · --notifications → /ai-onboard-update · Codex copy → /prompts:ai-onboard-update</code>
           </div>
           <div class="lifecycle-command">
             <span>Prove what cleanup would do</span>
@@ -385,7 +395,7 @@
           <div class="section-index" aria-hidden="true">06 / CATALOG</div>
           <div>
             <p class="eyebrow">Generated from the repository</p>
-            <h2 id="catalog-title"><span data-count="skills">67</span> skills. No mystery box.</h2>
+            <h2 id="catalog-title"><span data-count="skills">68</span> skills. No mystery box.</h2>
           </div>
           <p>
             Search the live catalog. Every entry links to its canonical SKILL.md, so the website and the

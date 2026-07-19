@@ -2,16 +2,33 @@ from __future__ import annotations
 
 import json
 import hashlib
+import importlib.util
 import os
+import plistlib
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
 MANAGER = ROOT / "scripts" / "ai_onboard.py"
+MANAGER_SPEC = importlib.util.spec_from_file_location(
+    "ai_onboard_manager", MANAGER
+)
+assert MANAGER_SPEC and MANAGER_SPEC.loader
+MANAGER_MODULE = importlib.util.module_from_spec(MANAGER_SPEC)
+sys.modules[MANAGER_SPEC.name] = MANAGER_MODULE
+MANAGER_SPEC.loader.exec_module(MANAGER_MODULE)
+NOTIFIER = ROOT / "scripts" / "install_macos_update_notifier.py"
+NOTIFIER_SPEC = importlib.util.spec_from_file_location(
+    "ai_onboard_macos_notifier", NOTIFIER
+)
+assert NOTIFIER_SPEC and NOTIFIER_SPEC.loader
+MACOS_NOTIFIER = importlib.util.module_from_spec(NOTIFIER_SPEC)
+NOTIFIER_SPEC.loader.exec_module(MACOS_NOTIFIER)
 
 
 class LifecycleManagerTests(unittest.TestCase):
@@ -33,6 +50,11 @@ class LifecycleManagerTests(unittest.TestCase):
             "version": version,
             "repository": "example/ai-onboard",
             "default_channel": "edge",
+            "release": {
+                "classification": "fix",
+                "summary": f"Reliability fixes in {version}.",
+                "notes_url": f"https://example.com/releases/{version}",
+            },
             "profiles": {
                 "core": {"categories": ["Engineering & delivery"]},
                 "security": {"categories": ["Security & trust"]},
@@ -89,6 +111,30 @@ class LifecycleManagerTests(unittest.TestCase):
                 "$schema": "https://opencode.ai/config.json",
                 "compaction": {"auto": True, "prune": True, "reserved": 12000},
             },
+        )
+        self.write(
+            self.source
+            / "templates/commands/claude/ai-onboard-update.md",
+            "Check AI_ONBOARD updates with the installed manager.\n",
+        )
+        self.write(
+            self.source
+            / "templates/commands/opencode/ai-onboard-update.md",
+            "Check AI_ONBOARD updates with the installed manager.\n",
+        )
+        self.write(
+            self.source
+            / "templates/commands/codex/ai-onboard-update.md",
+            "---\ndescription: Check AI_ONBOARD updates\n---\nCheck updates.\n",
+        )
+        self.write(
+            self.source
+            / "templates/notifications/github/ai-onboard-update-check.yml",
+            "name: AI_ONBOARD update check\n",
+        )
+        self.write(
+            self.source / "scripts/install_macos_update_notifier.py",
+            "#!/usr/bin/env python3\nprint('fixture notifier')\n",
         )
 
     @staticmethod
@@ -730,6 +776,315 @@ class LifecycleManagerTests(unittest.TestCase):
         result = self.run_manager("upgrade", "--check")
 
         self.assertIn("Update available", result.stdout)
+
+    def test_upgrade_check_json_reports_release_and_optional_exit_code(
+        self,
+    ) -> None:
+        self.run_manager(
+            "install",
+            "--harness",
+            "codex",
+            "--profile",
+            "core",
+        )
+        self.make_source("1.0.1", "core fix")
+
+        result = self.run_manager(
+            "upgrade",
+            "--check",
+            "--json",
+            "--exit-code",
+            expected=10,
+        )
+
+        status = json.loads(result.stdout)
+        self.assertTrue(status["update_available"])
+        self.assertEqual(status["current"]["version"], "1.0.0")
+        self.assertEqual(status["latest"]["version"], "1.0.1")
+        self.assertEqual(status["release"]["classification"], "fix")
+        self.assertEqual(
+            status["release"]["notes_url"],
+            "https://example.com/releases/1.0.1",
+        )
+        self.assertIn("checked_at", status)
+
+    def test_install_rejects_invalid_semantic_version_metadata(self) -> None:
+        manifest_path = self.source / "package-manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["version"] = "1.0.1\n::warning::forged"
+        self.write_json(manifest_path, manifest)
+
+        result = self.run_manager(
+            "install",
+            "--harness",
+            "codex",
+            "--profile",
+            "core",
+            expected=2,
+        )
+
+        self.assertIn("invalid package semantic version", result.stderr)
+
+    def test_upgrade_check_cache_is_opt_in_and_doctor_surfaces_notice(
+        self,
+    ) -> None:
+        self.run_manager(
+            "install",
+            "--harness",
+            "codex",
+            "--profile",
+            "core",
+        )
+        self.make_source("1.0.1", "core fix")
+        cache = self.target / ".ai-onboard/update-status.json"
+
+        self.run_manager("upgrade", "--check", "--json")
+        self.assertFalse(cache.exists())
+
+        self.run_manager("upgrade", "--check", "--cache")
+        cached = json.loads(cache.read_text(encoding="utf-8"))
+        self.assertTrue(cached["update_available"])
+
+        result = self.run_manager("doctor")
+        self.assertIn("Update available", result.stdout)
+        self.assertIn("Reliability fixes in 1.0.1.", result.stdout)
+
+        self.run_manager("upgrade")
+        self.assertFalse(cache.exists())
+        result = self.run_manager("doctor")
+        self.assertNotIn("Update available", result.stdout)
+
+    def test_notifications_feature_installs_portable_command_assets(
+        self,
+    ) -> None:
+        self.run_manager(
+            "install",
+            "--harness",
+            "claude,codex,opencode",
+            "--profile",
+            "core",
+            "--notifications",
+        )
+
+        desired = json.loads(
+            (self.target / "ai-onboard.json").read_text(encoding="utf-8")
+        )
+        self.assertTrue(desired["features"]["notifications"])
+        self.assertTrue(
+            (
+                self.target
+                / ".claude/commands/ai-onboard-update.md"
+            ).is_file()
+        )
+        self.assertTrue(
+            (
+                self.target
+                / ".opencode/commands/ai-onboard-update.md"
+            ).is_file()
+        )
+        self.assertTrue(
+            (
+                self.target
+                / ".ai-onboard/share/codex-prompts/ai-onboard-update.md"
+            ).is_file()
+        )
+        self.assertTrue(
+            (
+                self.target
+                / ".github/workflows/ai-onboard-update-check.yml"
+            ).is_file()
+        )
+        self.assertTrue(
+            (
+                self.target
+                / ".ai-onboard/bin/install_macos_update_notifier.py"
+            ).is_file()
+        )
+
+        self.run_manager("uninstall")
+        self.assertFalse(
+            (
+                self.target
+                / ".claude/commands/ai-onboard-update.md"
+            ).exists()
+        )
+        self.assertFalse(
+            (
+                self.target
+                / ".github/workflows/ai-onboard-update-check.yml"
+            ).exists()
+        )
+
+    def test_macos_notifier_builds_project_scoped_launch_agent(self) -> None:
+        manager = self.target / ".ai-onboard/bin/ai_onboard.py"
+        self.write(manager, "# manager\n")
+
+        label, payload = MACOS_NOTIFIER.launch_agent(self.target, "weekly")
+        destination = MACOS_NOTIFIER.plist_path(
+            self.target / "home", label
+        )
+
+        self.assertRegex(
+            label, r"^com\.rsthrives\.ai-onboard-update\.[0-9a-f]{12}$"
+        )
+        self.assertEqual(payload["StartInterval"], 7 * 24 * 60 * 60)
+        self.assertEqual(
+            payload["ProgramArguments"],
+            [
+                sys.executable,
+                str(manager),
+                "--target",
+                str(self.target),
+                "upgrade",
+                "--check",
+                "--cache",
+                "--notify",
+            ],
+        )
+        self.assertEqual(
+            destination,
+            self.target
+            / "home/Library/LaunchAgents"
+            / f"{label}.plist",
+        )
+
+    def test_uninstall_removes_matching_macos_notifier_and_update_cache(
+        self,
+    ) -> None:
+        self.run_manager(
+            "install",
+            "--harness",
+            "codex",
+            "--profile",
+            "core",
+            "--notifications",
+        )
+        self.make_source("1.0.1", "core fix")
+        self.run_manager("upgrade", "--check", "--cache")
+        cache = self.target / ".ai-onboard/update-status.json"
+        self.assertTrue(cache.is_file())
+
+        home = self.target / "home"
+        label, payload = MACOS_NOTIFIER.launch_agent(
+            self.target.resolve(), "weekly"
+        )
+        launch_agent = MACOS_NOTIFIER.plist_path(home, label)
+        launch_agent.parent.mkdir(parents=True)
+        with launch_agent.open("wb") as handle:
+            plistlib.dump(payload, handle)
+
+        with (
+            mock.patch.object(Path, "home", return_value=home),
+            mock.patch.object(MANAGER_MODULE.sys, "platform", "darwin"),
+            mock.patch.object(
+                MANAGER_MODULE.subprocess,
+                "run",
+                side_effect=[
+                    subprocess.CompletedProcess([], 0),
+                    subprocess.CompletedProcess([], 1),
+                ],
+            ) as launchctl,
+        ):
+            result = MANAGER_MODULE.command_uninstall(
+                MANAGER_MODULE.argparse.Namespace(
+                    dry_run=False,
+                    purge=False,
+                ),
+                self.target.resolve(),
+            )
+
+        self.assertEqual(result, 0)
+        self.assertFalse(cache.exists())
+        self.assertFalse(launch_agent.exists())
+        self.assertEqual(
+            [call.args[0][1] for call in launchctl.call_args_list],
+            ["bootout", "print"],
+        )
+
+    def test_uninstall_stops_when_macos_notifier_remains_loaded(
+        self,
+    ) -> None:
+        self.run_manager(
+            "install",
+            "--harness",
+            "codex",
+            "--profile",
+            "core",
+            "--notifications",
+        )
+        manager = self.target / ".ai-onboard/bin/ai_onboard.py"
+        home = self.target / "home"
+        label, payload = MACOS_NOTIFIER.launch_agent(
+            self.target.resolve(), "weekly"
+        )
+        launch_agent = MACOS_NOTIFIER.plist_path(home, label)
+        launch_agent.parent.mkdir(parents=True)
+        with launch_agent.open("wb") as handle:
+            plistlib.dump(payload, handle)
+
+        with (
+            mock.patch.object(Path, "home", return_value=home),
+            mock.patch.object(MANAGER_MODULE.sys, "platform", "darwin"),
+            mock.patch.object(
+                MANAGER_MODULE.subprocess,
+                "run",
+                side_effect=[
+                    subprocess.CompletedProcess([], 1),
+                    subprocess.CompletedProcess([], 0),
+                ],
+            ),
+            self.assertRaisesRegex(
+                MANAGER_MODULE.LifecycleError,
+                "remains loaded",
+            ),
+        ):
+            MANAGER_MODULE.command_uninstall(
+                MANAGER_MODULE.argparse.Namespace(
+                    dry_run=False,
+                    purge=False,
+                ),
+                self.target.resolve(),
+            )
+
+        self.assertTrue(launch_agent.is_file())
+        self.assertTrue(manager.is_file())
+
+    def test_upgrade_requires_review_before_replacing_active_workflow(
+        self,
+    ) -> None:
+        self.run_manager(
+            "install",
+            "--harness",
+            "codex",
+            "--profile",
+            "core",
+            "--notifications",
+        )
+        workflow = (
+            self.target
+            / ".github/workflows/ai-onboard-update-check.yml"
+        )
+        original = workflow.read_text(encoding="utf-8")
+        self.make_source("1.1.0", "core v2")
+        self.write(
+            self.source
+            / "templates/notifications/github/ai-onboard-update-check.yml",
+            "name: changed workflow\n",
+        )
+
+        result = self.run_manager("upgrade")
+
+        self.assertIn("review required", result.stdout)
+        self.assertEqual(workflow.read_text(encoding="utf-8"), original)
+        conflict = (
+            self.target
+            / ".ai-onboard/conflicts"
+            / ".github/workflows/ai-onboard-update-check.yml"
+        )
+        self.assertEqual(
+            conflict.read_text(encoding="utf-8"),
+            "name: changed workflow\n",
+        )
 
     def test_install_rejects_symlinked_local_source_content(self) -> None:
         external = self.source.parent / "external-skill"
