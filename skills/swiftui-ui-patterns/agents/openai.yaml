@@ -1,0 +1,4 @@
+interface:
+  display_name: "SwiftUI UI Patterns"
+  short_description: "Build idiomatic adaptive SwiftUI interfaces"
+  default_prompt: "Use $swiftui-ui-patterns to build this SwiftUI interface for the project targets."

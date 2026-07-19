@@ -1,0 +1,4 @@
+interface:
+  display_name: "SwiftUI Performance Audit"
+  short_description: "Measure and improve SwiftUI performance"
+  default_prompt: "Use $swiftui-performance-audit to diagnose this SwiftUI performance issue."

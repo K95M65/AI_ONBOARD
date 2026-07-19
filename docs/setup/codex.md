@@ -163,6 +163,18 @@ gate enforce the boundary.
 
 ## Recommended baseline
 
+For a user-global skill and reference-agent installation:
+
+```bash
+python3 /path/to/AI_ONBOARD/scripts/ai_onboard.py \
+  --global install --harness codex --profile core --agents
+```
+
+This uses `~/.agents/skills/` and `~/.codex/agents/` and installs `~/.local/bin/ai-onboard`. It does not
+change `~/.codex/config.toml` or create a global `AGENTS.md`.
+
+For project-managed skills, agents, and bounded configuration:
+
 ```bash
 python3 /path/to/AI_ONBOARD/scripts/ai_onboard.py \
   --target /path/to/project \

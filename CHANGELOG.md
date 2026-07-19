@@ -2,6 +2,16 @@
 
 All notable user-visible changes to AI_ONBOARD are documented here.
 
+## [Unreleased]
+
+### Added
+
+- Explicit user-global installation for Claude Code, Codex, and OpenCode skills and reference agents, with
+  separate state, a user command, safe lifecycle operations, and no project configuration side effects.
+- Project-and-global deployment smoke coverage for every first-class harness.
+- Apple workflow source-selection guidance, specialist routing documentation, and Codex UI metadata for
+  all eleven Apple skills.
+
 ## [0.2.0] - 2026-07-18
 
 ### Added

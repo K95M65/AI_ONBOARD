@@ -62,6 +62,21 @@ Keep the root file general and push specifics down into nested files rather than
 These are documented per-tool in [`setup/`](setup/). They stay out of `AGENTS.md` so the
 shared file remains portable across every harness.
 
+## User-global package paths
+
+An explicit `ai_onboard.py --global install` uses each first-class harness's native user-level discovery
+surface while keeping repository instructions project-owned:
+
+| Harness | Global skills | Global reference agents |
+|---------|---------------|-------------------------|
+| Claude Code | `~/.claude/skills/` | `~/.claude/agents/` |
+| Codex | `~/.agents/skills/` | `~/.codex/agents/` |
+| OpenCode | `~/.agents/skills/` | `~/.config/opencode/agents/` |
+
+AI_ONBOARD records this installation under `~/.ai-onboard/` and places the global lifecycle command at
+`~/.local/bin/ai-onboard`. It does not create a global `AGENTS.md` or modify user-level harness
+configuration.
+
 The starter configs in [`../templates/configs/`](../templates/configs/) cover Claude Code, Codex, and
 OpenCode. Install them with the [lifecycle manager](install-management.md), which merges only managed keys,
 records checksums, and supports safe upgrade and uninstall. `templates/link.sh --configs` remains a

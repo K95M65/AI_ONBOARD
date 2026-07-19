@@ -1,0 +1,4 @@
+interface:
+  display_name: "Core Data Expert"
+  short_description: "Build and diagnose robust Core Data stores"
+  default_prompt: "Use $core-data-expert to implement or diagnose this Core Data workflow."

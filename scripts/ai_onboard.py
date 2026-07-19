@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Manage reversible AI_ONBOARD installations in a project.
+"""Manage reversible project or user-global AI_ONBOARD installations.
 
 The manager is dependency-free. It records desired state separately from the
 resolved lock, never overwrites divergent user files, and removes only content
@@ -38,6 +38,9 @@ SCHEMA = 1
 DESIRED_NAME = "ai-onboard.json"
 LOCK_NAME = ".ai-onboard.lock.json"
 STATE_DIR = ".ai-onboard"
+GLOBAL_DESIRED_NAME = f"{STATE_DIR}/ai-onboard.json"
+GLOBAL_LOCK_NAME = f"{STATE_DIR}/ai-onboard.lock.json"
+GLOBAL_LAUNCHER = ".local/bin/ai-onboard"
 UPDATE_STATUS_NAME = f"{STATE_DIR}/update-status.json"
 SUPPORTED_HARNESSES = ("claude", "codex", "opencode")
 DEFAULT_REPOSITORY = "K95M65/AI_ONBOARD"
@@ -60,7 +63,7 @@ REVIEW_REQUIRED_ARTIFACTS = {
 MAX_ARCHIVE_BYTES = 100 * 1024 * 1024
 MAX_EXTRACTED_BYTES = 256 * 1024 * 1024
 MAX_ARCHIVE_MEMBERS = 20_000
-MANAGED_ARTIFACT_PATTERNS = (
+PROJECT_MANAGED_ARTIFACT_PATTERNS = (
     re.compile(r"\.agents/skills/[a-z0-9]+(?:-[a-z0-9]+)*"),
     re.compile(r"\.claude/skills/[a-z0-9]+(?:-[a-z0-9]+)*"),
     re.compile(r"\.claude/agents/[a-z0-9]+(?:-[a-z0-9]+)*\.md"),
@@ -72,6 +75,14 @@ MANAGED_ARTIFACT_PATTERNS = (
     re.compile(r"\.claude/commands/ai-onboard-update\.md"),
     re.compile(r"\.opencode/commands/ai-onboard-update\.md"),
     re.compile(r"\.github/workflows/ai-onboard-update-check\.yml"),
+)
+GLOBAL_MANAGED_ARTIFACT_PATTERNS = (
+    re.compile(r"\.agents/skills/[a-z0-9]+(?:-[a-z0-9]+)*"),
+    re.compile(r"\.claude/skills/[a-z0-9]+(?:-[a-z0-9]+)*"),
+    re.compile(r"\.claude/agents/[a-z0-9]+(?:-[a-z0-9]+)*\.md"),
+    re.compile(r"\.codex/agents/[a-z0-9]+(?:-[a-z0-9]+)*\.toml"),
+    re.compile(r"\.config/opencode/agents/[a-z0-9]+(?:-[a-z0-9]+)*\.md"),
+    re.compile(r"\.local/bin/ai-onboard"),
 )
 ALLOWED_CONFIG_VALUES: dict[str, dict[str, Any]] = {
     ".claude/settings.json": {
@@ -244,6 +255,25 @@ def managed_path(target: Path, relative: str) -> Path:
             f"managed path is outside the target project: {relative!r}"
         )
     return candidate
+
+
+def desired_state_name(global_scope: bool) -> str:
+    return GLOBAL_DESIRED_NAME if global_scope else DESIRED_NAME
+
+
+def lock_state_name(global_scope: bool) -> str:
+    return GLOBAL_LOCK_NAME if global_scope else LOCK_NAME
+
+
+def desired_is_global(desired: dict[str, Any]) -> bool:
+    scope = desired.get("scope", "project")
+    if scope not in {"project", "global"}:
+        raise LifecycleError(f"unsupported installation scope {scope!r}")
+    return scope == "global"
+
+
+def invoked_from_global_launcher() -> bool:
+    return Path(__file__).name == Path(GLOBAL_LAUNCHER).name
 
 
 def backup_path(target: Path, relative: str, dry_run: bool = False) -> None:
@@ -832,6 +862,7 @@ def resolve_source(
     source_arg: str | None,
     target: Path,
     *,
+    global_scope: bool = False,
     use_locked_revision: bool = False,
 ) -> Iterator[Source]:
     if source_arg:
@@ -842,13 +873,13 @@ def resolve_source(
         yield load_source(repository_root)
         return
 
-    desired_path = managed_path(target, DESIRED_NAME)
+    desired_path = managed_path(target, desired_state_name(global_scope))
     desired = read_json(desired_path) if desired_path.is_file() else {}
     source_config = desired.get("source", {})
     repository = str(source_config.get("repository", DEFAULT_REPOSITORY))
     channel = str(source_config.get("channel", "stable"))
     locked_revision = None
-    lock_path = managed_path(target, LOCK_NAME)
+    lock_path = managed_path(target, lock_state_name(global_scope))
     if use_locked_revision and lock_path.is_file():
         locked_revision = str(
             read_json(lock_path).get("source_revision", "")
@@ -907,6 +938,7 @@ def desired_artifacts(
 ) -> list[Artifact]:
     harnesses = desired["harnesses"]
     features = desired["features"]
+    global_scope = desired_is_global(desired)
     skills = selected_skills(
         source,
         desired["profiles"],
@@ -960,16 +992,25 @@ def desired_artifacts(
                     path, relative, str(path.relative_to(source.root))
                 )
         if "opencode" in harnesses:
+            agent_root = (
+                ".config/opencode/agents"
+                if global_scope
+                else ".opencode/agents"
+            )
             for path in sorted((source.root / "agents/opencode").glob("*.md")):
                 if path.name == "README.md":
                     continue
                 path = source_artifact(source.root, path)
-                relative = f".opencode/agents/{path.name}"
+                relative = f"{agent_root}/{path.name}"
                 artifacts[relative] = Artifact(
                     path, relative, str(path.relative_to(source.root))
                 )
 
     if features.get("notifications"):
+        if global_scope:
+            raise LifecycleError(
+                "--notifications is available only for project installs"
+            )
         notification_artifacts = []
         if "claude" in harnesses:
             notification_artifacts.append(
@@ -1021,7 +1062,11 @@ def desired_artifacts(
         )
         if packaged_manager.is_file():
             manager = source_artifact(source.root, manager)
-        relative = f"{STATE_DIR}/bin/ai_onboard.py"
+        relative = (
+            GLOBAL_LAUNCHER
+            if global_scope
+            else f"{STATE_DIR}/bin/ai_onboard.py"
+        )
         artifacts[relative] = Artifact(manager, relative, "scripts/ai_onboard.py")
 
     return [artifacts[key] for key in sorted(artifacts)]
@@ -1030,6 +1075,8 @@ def desired_artifacts(
 def desired_configs(source: Source, desired: dict[str, Any]) -> list[tuple[str, str, Path]]:
     if not desired["features"].get("configs"):
         return []
+    if desired_is_global(desired):
+        raise LifecycleError("--configs is available only for project installs")
     result: list[tuple[str, str, Path]] = []
     harnesses = desired["harnesses"]
     if "claude" in harnesses:
@@ -1609,6 +1656,7 @@ def build_desired(
     harnesses: list[str],
     profiles: list[str],
     *,
+    global_scope: bool,
     agents: bool,
     configs: bool,
     workflow_foundations: bool,
@@ -1620,6 +1668,7 @@ def build_desired(
     channel = str(source.manifest.get("default_channel", "stable"))
     return {
         "schema": SCHEMA,
+        "scope": "global" if global_scope else "project",
         "source": {"repository": repository, "channel": channel},
         "harnesses": validate_harnesses(harnesses),
         "profiles": validate_profiles(source, profiles),
@@ -1632,20 +1681,32 @@ def build_desired(
     }
 
 
-def load_desired(target: Path) -> dict[str, Any]:
-    path = managed_path(target, DESIRED_NAME)
+def load_desired(
+    target: Path,
+    global_scope: bool = False,
+) -> dict[str, Any]:
+    name = desired_state_name(global_scope)
+    path = managed_path(target, name)
     if not path.is_file():
-        raise LifecycleError(f"{DESIRED_NAME} is missing; run install or adopt")
+        raise LifecycleError(f"{name} is missing; run install or adopt")
     desired = read_json(path)
     if desired.get("schema") != SCHEMA:
         raise LifecycleError(
             f"unsupported desired-state schema {desired.get('schema')!r}"
         )
+    if desired_is_global(desired) != global_scope:
+        expected = "global" if global_scope else "project"
+        raise LifecycleError(
+            f"desired state does not describe a {expected} installation"
+        )
     return desired
 
 
-def load_lock(target: Path) -> dict[str, Any]:
-    path = managed_path(target, LOCK_NAME)
+def load_lock(
+    target: Path,
+    global_scope: bool = False,
+) -> dict[str, Any]:
+    path = managed_path(target, lock_state_name(global_scope))
     if not path.is_file():
         return {"schema": SCHEMA, "artifacts": [], "configs": []}
     lock = read_json(path)
@@ -1657,13 +1718,18 @@ def load_lock(target: Path) -> dict[str, Any]:
     configs = lock.get("configs", [])
     if not isinstance(artifacts, list) or not isinstance(configs, list):
         raise LifecycleError("lock artifacts and configs must be lists")
+    patterns = (
+        GLOBAL_MANAGED_ARTIFACT_PATTERNS
+        if global_scope
+        else PROJECT_MANAGED_ARTIFACT_PATTERNS
+    )
     for record in artifacts:
         if not isinstance(record, dict):
             raise LifecycleError("lock artifact entries must be objects")
         relative = record.get("path")
         if not isinstance(relative, str) or not any(
             pattern.fullmatch(relative)
-            for pattern in MANAGED_ARTIFACT_PATTERNS
+            for pattern in patterns
         ):
             raise LifecycleError(
                 f"lock artifact path is outside managed namespaces: {relative!r}"
@@ -1672,6 +1738,8 @@ def load_lock(target: Path) -> dict[str, Any]:
             raise LifecycleError(f"lock artifact has invalid checksum: {relative}")
         if record.get("ownership") not in {"owned", "adopted"}:
             raise LifecycleError(f"lock artifact has invalid ownership: {relative}")
+    if global_scope and configs:
+        raise LifecycleError("global lock cannot manage harness configuration")
     for config in configs:
         if not isinstance(config, dict):
             raise LifecycleError("lock config entries must be objects")
@@ -1779,7 +1847,8 @@ def reconcile(
     adopt_only: bool = False,
     dry_run: bool = False,
 ) -> dict[str, Any]:
-    old_lock = load_lock(target)
+    global_scope = desired_is_global(desired)
+    old_lock = load_lock(target, global_scope)
     preflight_configs(source, target, desired, old_lock)
     previous = {
         record["path"]: record for record in old_lock.get("artifacts", [])
@@ -1818,8 +1887,16 @@ def reconcile(
         "configs": configs,
     }
     ensure_state_gitignore(target, dry_run)
-    write_json(managed_path(target, DESIRED_NAME), desired, dry_run)
-    write_json(managed_path(target, LOCK_NAME), lock, dry_run)
+    write_json(
+        managed_path(target, desired_state_name(global_scope)),
+        desired,
+        dry_run,
+    )
+    write_json(
+        managed_path(target, lock_state_name(global_scope)),
+        lock,
+        dry_run,
+    )
     return lock
 
 
@@ -1910,9 +1987,15 @@ def remove_managed_config(
 
 
 def command_install(args: argparse.Namespace, source: Source, target: Path) -> int:
-    if not managed_path(target, "AGENTS.md").is_file():
+    if not args.global_scope and not managed_path(target, "AGENTS.md").is_file():
         raise LifecycleError(
             "AGENTS.md is missing; start from AI_ONBOARD/templates/AGENTS.md"
+        )
+    if args.global_scope and args.configs:
+        raise LifecycleError("--configs is available only for project installs")
+    if args.global_scope and args.notifications:
+        raise LifecycleError(
+            "--notifications is available only for project installs"
         )
     harnesses = split_csv(args.harness) or list(SUPPORTED_HARNESSES)
     profiles = split_csv(args.profile) or ["core"]
@@ -1920,6 +2003,7 @@ def command_install(args: argparse.Namespace, source: Source, target: Path) -> i
         source,
         harnesses,
         profiles,
+        global_scope=args.global_scope,
         agents=args.agents,
         configs=args.configs,
         workflow_foundations=args.workflow_foundations,
@@ -1927,16 +2011,31 @@ def command_install(args: argparse.Namespace, source: Source, target: Path) -> i
     )
     print(
         f"Installing AI_ONBOARD {source.manifest['version']} "
+        f"{'globally ' if args.global_scope else ''}"
         f"for {', '.join(desired['harnesses'])}"
     )
     reconcile(source, target, desired, dry_run=args.dry_run)
+    if args.global_scope:
+        launcher = managed_path(target, GLOBAL_LAUNCHER)
+        print(f"Global launcher: {launcher}")
+        if str(launcher.parent) not in os.environ.get("PATH", "").split(os.pathsep):
+            print(
+                f"  add {launcher.parent} to PATH to run 'ai-onboard'",
+                file=sys.stderr,
+            )
     return 0
 
 
 def command_adopt(args: argparse.Namespace, source: Source, target: Path) -> int:
-    if not managed_path(target, "AGENTS.md").is_file():
+    if not args.global_scope and not managed_path(target, "AGENTS.md").is_file():
         raise LifecycleError(
             "AGENTS.md is missing; adoption requires the project's shared contract"
+        )
+    if args.global_scope and args.configs:
+        raise LifecycleError("--configs is available only for project installs")
+    if args.global_scope and args.notifications:
+        raise LifecycleError(
+            "--notifications is available only for project installs"
         )
     harnesses = split_csv(args.harness) or list(SUPPORTED_HARNESSES)
     profiles = split_csv(args.profile) or ["core"]
@@ -1944,6 +2043,7 @@ def command_adopt(args: argparse.Namespace, source: Source, target: Path) -> int
         source,
         harnesses,
         profiles,
+        global_scope=args.global_scope,
         agents=args.agents,
         configs=args.configs,
         workflow_foundations=args.workflow_foundations,
@@ -1957,7 +2057,7 @@ def command_adopt(args: argparse.Namespace, source: Source, target: Path) -> int
 def command_sync(
     args: argparse.Namespace, source: Source, target: Path, label: str = "Syncing"
 ) -> int:
-    desired = load_desired(target)
+    desired = load_desired(target, args.global_scope)
     validate_harnesses(list(desired.get("harnesses", [])))
     validate_profiles(source, list(desired.get("profiles", [])))
     print(f"{label} AI_ONBOARD {source.manifest['version']}")
@@ -2215,13 +2315,20 @@ def remove_macos_update_notifier(
     print(f"  removed macOS update notifier {label}")
 
 
-def command_status(target: Path, verbose: bool = False) -> int:
-    desired_exists = managed_path(target, DESIRED_NAME).is_file()
-    lock_exists = managed_path(target, LOCK_NAME).is_file()
+def command_status(
+    target: Path,
+    verbose: bool = False,
+    global_scope: bool = False,
+) -> int:
+    desired_exists = managed_path(
+        target, desired_state_name(global_scope)
+    ).is_file()
+    lock_exists = managed_path(target, lock_state_name(global_scope)).is_file()
     if not desired_exists or not lock_exists:
-        print("AI_ONBOARD is not fully managed in this project")
+        location = "for this user" if global_scope else "in this project"
+        print(f"AI_ONBOARD is not fully managed {location}")
         return 1
-    lock = load_lock(target)
+    lock = load_lock(target, global_scope)
     drift = 0
     clean = 0
     print(
@@ -2284,20 +2391,20 @@ def command_status(target: Path, verbose: bool = False) -> int:
     return 1 if drift else 0
 
 
-def command_doctor(target: Path) -> int:
+def command_doctor(target: Path, global_scope: bool = False) -> int:
     issues = 0
     try:
-        desired = load_desired(target)
+        desired = load_desired(target, global_scope)
         validate_harnesses(list(desired.get("harnesses", [])))
     except LifecycleError as exc:
         print(f"  error: {exc}")
         issues += 1
     try:
-        load_lock(target)
+        load_lock(target, global_scope)
     except LifecycleError as exc:
         print(f"  error: {exc}")
         issues += 1
-    status = command_status(target)
+    status = command_status(target, global_scope=global_scope)
     issues += status
     show_cached_update_status(target)
     conflicts = managed_path(target, f"{STATE_DIR}/conflicts")
@@ -2311,7 +2418,8 @@ def command_doctor(target: Path) -> int:
 
 
 def command_uninstall(args: argparse.Namespace, target: Path) -> int:
-    lock = load_lock(target)
+    global_scope = getattr(args, "global_scope", False)
+    lock = load_lock(target, global_scope)
     for config in lock.get("configs", []):
         path = managed_path(target, str(config["path"]))
         if not path.is_file():
@@ -2326,7 +2434,8 @@ def command_uninstall(args: argparse.Namespace, target: Path) -> int:
                     f"cannot uninstall from invalid TOML {path}: {exc}"
                 ) from exc
     print("Uninstalling managed AI_ONBOARD artifacts")
-    remove_macos_update_notifier(target, dry_run=args.dry_run)
+    if not global_scope:
+        remove_macos_update_notifier(target, dry_run=args.dry_run)
     update_status = managed_path(target, UPDATE_STATUS_NAME)
     if update_status.is_symlink() or update_status.is_file():
         if not args.dry_run:
@@ -2367,9 +2476,13 @@ def command_uninstall(args: argparse.Namespace, target: Path) -> int:
         print(f"  removed unchanged managed keys from {config['path']}")
 
     if not args.dry_run:
-        managed_path(target, LOCK_NAME).unlink(missing_ok=True)
+        managed_path(
+            target, lock_state_name(global_scope)
+        ).unlink(missing_ok=True)
         if args.purge:
-            managed_path(target, DESIRED_NAME).unlink(missing_ok=True)
+            managed_path(
+                target, desired_state_name(global_scope)
+            ).unlink(missing_ok=True)
     print(
         "Desired state preserved; use --purge to remove it"
         if not args.purge
@@ -2397,7 +2510,7 @@ def command_cleanup(args: argparse.Namespace, target: Path) -> int:
 def command_profile(
     args: argparse.Namespace, source: Source, target: Path
 ) -> int:
-    desired = load_desired(target)
+    desired = load_desired(target, args.global_scope)
     profiles = list(desired.get("profiles", []))
     available = source.manifest.get("profiles", {})
     if args.name not in available:
@@ -2409,7 +2522,11 @@ def command_profile(
     if not profiles:
         raise LifecycleError("at least one profile must remain installed")
     desired["profiles"] = sorted(profiles)
-    write_json(managed_path(target, DESIRED_NAME), desired, args.dry_run)
+    write_json(
+        managed_path(target, desired_state_name(args.global_scope)),
+        desired,
+        args.dry_run,
+    )
     print(f"Profile {args.action}: {args.name}")
     reconcile(source, target, desired, dry_run=args.dry_run)
     return 0
@@ -2441,7 +2558,27 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Install, upgrade, inspect, and remove AI_ONBOARD safely."
     )
-    parser.add_argument("--target", default=".", help="Project root (default: .)")
+    parser.add_argument(
+        "--target",
+        help=(
+            "Project root, or alternate home root with --global "
+            "(default: current directory or $HOME)"
+        ),
+    )
+    scope = parser.add_mutually_exclusive_group()
+    scope.add_argument(
+        "--global",
+        dest="global_scope",
+        action="store_true",
+        help="Manage a user-global installation across repositories",
+    )
+    scope.add_argument(
+        "--project",
+        dest="global_scope",
+        action="store_false",
+        help="Manage a project installation",
+    )
+    parser.set_defaults(global_scope=None)
     parser.add_argument(
         "--source",
         help="AI_ONBOARD source checkout; otherwise use the local package or configured remote",
@@ -2521,7 +2658,18 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
-    target = Path(args.target).resolve()
+    if args.global_scope is None:
+        args.global_scope = invoked_from_global_launcher()
+    if args.target:
+        target = Path(args.target).resolve()
+    elif args.command == "check-git":
+        target = Path.cwd().resolve()
+    else:
+        target = (
+            Path.home().resolve()
+            if args.global_scope
+            else Path.cwd().resolve()
+        )
 
     try:
         if not target.is_dir():
@@ -2529,9 +2677,13 @@ def main() -> int:
                 f"target project directory does not exist: {target}"
             )
         if args.command == "status":
-            return command_status(target, args.verbose)
+            return command_status(
+                target,
+                args.verbose,
+                global_scope=args.global_scope,
+            )
         if args.command == "doctor":
-            return command_doctor(target)
+            return command_doctor(target, args.global_scope)
         if args.command == "check-git":
             return command_check_git(
                 target,
@@ -2548,7 +2700,10 @@ def main() -> int:
 
         use_locked = args.command in {"sync", "profile"} and not args.source
         with resolve_source(
-            args.source, target, use_locked_revision=use_locked
+            args.source,
+            target,
+            global_scope=args.global_scope,
+            use_locked_revision=use_locked,
         ) as source:
             if args.command == "install":
                 return command_install(args, source, target)
@@ -2564,7 +2719,7 @@ def main() -> int:
                     raise LifecycleError(
                         "--json, --cache, --notify, and --exit-code require --check"
                     )
-                old = load_lock(target)
+                old = load_lock(target, args.global_scope)
                 if (
                     args.command == "sync"
                     and old.get("source_digest")

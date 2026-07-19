@@ -9,11 +9,12 @@ Each guide covers **two things** for one tool:
 [The interactive project map](https://k95m65.github.io/AI_ONBOARD/) shows where harness wiring ends and
 on-demand skills and independent agents begin.
 
-For new projects, use the [managed installer](../install-management.md) to select harnesses and capability
-profiles, preserve a lockfile, and gain safe upgrade, cleanup, and uninstall commands. The guides below
-explain each harness's native behavior; the manager applies those decisions without replacing `AGENTS.md`.
-The core profile includes the portable update-check skill. Add `--notifications` for native
-Claude/OpenCode slash commands, the optional Codex compatibility-prompt source, and scheduled notices.
+Use the [managed installer](../install-management.md) in explicit global scope to make selected skills and
+reference agents available across repositories, or in project scope to preserve a repository lockfile and
+manage project configuration. The guides below explain each harness's native behavior; neither mode
+replaces a project's `AGENTS.md`. The core profile includes the portable update-check skill. Project
+installs may add `--notifications` for native Claude/OpenCode slash commands, the optional Codex
+compatibility-prompt source, and scheduled notices.
 
 | Guide | Native file | Config surface |
 |-------|-------------|----------------|

@@ -1,0 +1,4 @@
+interface:
+  display_name: "SwiftData Expert"
+  short_description: "Implement and migrate SwiftData persistence"
+  default_prompt: "Use $swiftdata-expert to design or debug this SwiftData persistence workflow."

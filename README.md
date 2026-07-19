@@ -61,6 +61,7 @@ and install-package name.
 | [`docs/delegation.md`](docs/delegation.md) | How agents delegate to subagents (by function) and specialize by layer (profiles) |
 | [`docs/mechanisms.md`](docs/mechanisms.md) | Which mechanism to use — AGENTS.md vs Skills vs Subagents |
 | [`docs/install-management.md`](docs/install-management.md) | Managed installation, profiles, upgrades, adoption, cleanup, and uninstall |
+| [`docs/apple-development.md`](docs/apple-development.md) | Apple skill routing, source selection, and local-to-package integration policy |
 | [`docs/workflow-foundations.md`](docs/workflow-foundations.md) | Manually invoked, native-first GOAL and explicit GRILL compatibility workflows |
 | [`docs/capability-expansion.md`](docs/capability-expansion.md) | Browser testing, web preservation, current docs, Obsidian, code quality, Superpowers, and frontend-design gap decisions |
 | [`docs/security-audit.md`](docs/security-audit.md) | Security audit methodology — severity rubric, report format, skill + subagent |
@@ -84,33 +85,46 @@ and install-package name.
 
 ## Quickstart
 
-1. Start the target project with an `AGENTS.md`: copy [`templates/AGENTS.md`](templates/AGENTS.md), or
-   invoke `agents-md-init` to generate a stack-aware version.
-2. Clone AI_ONBOARD and install only the capability profiles the project needs:
+Clone once and install a focused skill and reference-agent surface for your user account:
 
-   ```bash
-   git clone https://github.com/K95M65/AI_ONBOARD.git
-   python3 AI_ONBOARD/scripts/ai_onboard.py \
-     --target /path/to/project \
-     install \
-     --harness claude,codex,opencode \
-     --profile core \
-     --profile product \
-     --agents \
-     --configs
-   ```
+```bash
+git clone https://github.com/K95M65/AI_ONBOARD.git
+python3 AI_ONBOARD/scripts/ai_onboard.py \
+  --global \
+  install \
+  --harness claude,codex,opencode \
+  --profile core \
+  --profile apple \
+  --agents
+```
 
-   Add `--workflow-foundations` only when the project wants the manual GOAL and GRILL compatibility layer.
-   Profiles keep skill discovery focused; available profiles are `core`, `product`, `apple`, `security`,
-   `cloudflare`, and `research`.
-3. Commit `ai-onboard.json`, `.ai-onboard.lock.json`, and the installed project files. The target now carries
-   its own manager:
+The explicit global install writes only to native user-level discovery paths and installs
+`~/.local/bin/ai-onboard`. Add that directory to `PATH` if prompted:
 
-   ```bash
-   python3 .ai-onboard/bin/ai_onboard.py status
-   python3 .ai-onboard/bin/ai_onboard.py upgrade --check --cache --json
-   python3 .ai-onboard/bin/ai_onboard.py uninstall --dry-run
-   ```
+```bash
+ai-onboard status
+ai-onboard upgrade --check --cache --json
+ai-onboard uninstall --dry-run
+```
+
+Each repository still owns its `AGENTS.md`. Use a separate project install when a repository needs
+committed desired state, harness configuration, commands, or notification assets:
+
+```bash
+python3 AI_ONBOARD/scripts/ai_onboard.py \
+  --target /path/to/project \
+  install \
+  --harness claude,codex,opencode \
+  --profile core \
+  --profile product \
+  --agents \
+  --configs
+```
+
+Start the project with an `AGENTS.md` by copying [`templates/AGENTS.md`](templates/AGENTS.md) or invoking
+`agents-md-init`. Add `--workflow-foundations` only when the user or project wants the manual GOAL and
+GRILL compatibility layer. Available profiles are `core`, `product`, `apple`, `security`, `cloudflare`,
+and `research`.
 
 The manager preserves divergent user files, merges only owned configuration keys, stages incoming conflicts,
 and removes only unchanged managed content. See [`docs/install-management.md`](docs/install-management.md)
@@ -167,11 +181,11 @@ python3 scripts/test_deployments.py
 python3 scripts/test_deployments.py --harness codex --verbose
 ```
 
-Each isolated temporary project installs every capability profile plus agents, configs, notifications, and
-manual workflow foundations. The script validates the harness-specific layout, desired state, lockfile,
-user-config preservation, `status`, `doctor`, local-source update checks, sync and uninstall previews, and
-real cleanup. It does not require harness credentials or make model API calls. GitHub Actions runs the same
-contract as a Claude, Codex, and OpenCode matrix on every push and pull request.
+For each harness, the script validates both a complete project installation and an isolated global
+installation. It checks harness-specific layout, desired state, lockfiles, user-config preservation,
+`status`, `doctor`, local-source update checks, sync and uninstall previews, and real cleanup. It does not
+require harness credentials or make model API calls. GitHub Actions runs the same contract as a Claude,
+Codex, and OpenCode matrix on every push and pull request.
 
 ## Website and documentation
 
@@ -211,8 +225,8 @@ reports a deployment skip without treating successful website validation as a fa
 ## Scope
 
 This repo covers **project-level onboarding files** (what an agent should know when it opens your repo),
-**portable skills** (reusable capabilities), and **independent reference subagents** (bounded research and
-review lenses). It is intentionally tool-agnostic: tool-specific power features (Claude Code hooks, Codex
+**user-global portable skills**, and **independent reference subagents** (bounded research and review
+lenses). It is intentionally tool-agnostic: tool-specific power features (Claude Code hooks, Codex
 `config.toml`, etc.) are documented in `docs/setup/` but kept *out* of the shared `AGENTS.md` so it stays
 portable.
 

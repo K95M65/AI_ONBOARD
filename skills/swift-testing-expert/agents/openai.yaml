@@ -1,0 +1,4 @@
+interface:
+  display_name: "Swift Testing Expert"
+  short_description: "Create reliable Swift and UI test suites"
+  default_prompt: "Use $swift-testing-expert to add or improve tests for this Swift project."

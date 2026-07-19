@@ -22,6 +22,19 @@ truth every other file points back to.
 
 ## Preferred managed path
 
+For skills and reference agents shared across repositories, install to the native user-level harness paths:
+
+```bash
+python3 /path/to/AI_ONBOARD/scripts/ai_onboard.py \
+  --global \
+  install \
+  --harness claude,codex,opencode \
+  --profile core \
+  --agents
+```
+
+This installs `~/.local/bin/ai-onboard` and keeps project instructions and harness configuration untouched.
+
 From a project that already has an `AGENTS.md` at its root:
 
 ```bash

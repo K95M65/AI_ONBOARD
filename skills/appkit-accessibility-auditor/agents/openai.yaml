@@ -1,0 +1,4 @@
+interface:
+  display_name: "AppKit Accessibility Auditor"
+  short_description: "Audit native macOS accessibility behavior"
+  default_prompt: "Use $appkit-accessibility-auditor to audit and fix this AppKit interface."

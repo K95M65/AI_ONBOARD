@@ -175,6 +175,18 @@ the `gsd-surface` skill or per-subagent `tools`/prompt.
 
 ## Recommended baseline
 
+For a user-global skill and reference-agent installation:
+
+```bash
+python3 /path/to/AI_ONBOARD/scripts/ai_onboard.py \
+  --global install --harness claude --profile core --agents
+```
+
+This uses `~/.claude/skills/` and `~/.claude/agents/` and installs `~/.local/bin/ai-onboard`. It does not
+change Claude settings or create a global instruction file.
+
+For project-managed skills, agents, and bounded configuration:
+
 ```bash
 python3 /path/to/AI_ONBOARD/scripts/ai_onboard.py \
   --target /path/to/project \

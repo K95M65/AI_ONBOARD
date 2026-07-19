@@ -16,7 +16,8 @@ The site should answer five questions in order:
 2. **What is the model?** Durable project context, on-demand procedures, and isolated agents solve different
    context problems.
 3. **How is it managed?** Capability profiles, desired state, a lockfile, checksums, backups, staged
-   conflicts, structured update checks, and opt-in notices make install, upgrade, and removal inspectable.
+   conflicts, explicit project or user-global scope, structured update checks, and opt-in notices make
+   install, upgrade, and removal inspectable.
 4. **How does a request move?** An interactive router shows the orchestrator, specialists, review lenses,
    evidence, and release boundary for representative work.
 5. **What is the result?** A verified handoff records what changed, which checks passed, what shipped, and
@@ -88,8 +89,8 @@ default rather than mandatory linear stages.
 
 Update notices follow the same opt-in principle. The site may present the portable update skill, native
 Claude/OpenCode `/ai-onboard-update` commands, Codex compatibility prompt, weekly GitHub check, and macOS
-notifier, but must not imply that AI_ONBOARD writes to a user's home directory or enables a scheduler
-without an explicit install action.
+notifier. A user-global write must be tied to the explicit `--global` install action, and the site must not
+imply that AI_ONBOARD enables a scheduler without an explicit notification action.
 
 Vendored upstream READMEs are excluded from project navigation edits. Preserve their source text and
 licenses.

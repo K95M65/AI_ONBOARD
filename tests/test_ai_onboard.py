@@ -226,6 +226,129 @@ class LifecycleManagerTests(unittest.TestCase):
         self.assertIn("[custom]", codex)
         self.assertIn("[agents]", codex)
 
+    def test_global_install_uses_native_user_level_harness_paths(self) -> None:
+        (self.target / "AGENTS.md").unlink()
+
+        self.run_manager(
+            "--global",
+            "install",
+            "--harness",
+            "claude,codex,opencode",
+            "--profile",
+            "core",
+            "--agents",
+        )
+
+        self.assertTrue((self.target / ".claude/skills/core-tool").is_dir())
+        self.assertTrue((self.target / ".agents/skills/core-tool").is_dir())
+        self.assertTrue(
+            (self.target / ".claude/agents/researcher.md").is_file()
+        )
+        self.assertTrue(
+            (self.target / ".codex/agents/researcher.toml").is_file()
+        )
+        self.assertTrue(
+            (
+                self.target
+                / ".config/opencode/agents/researcher.md"
+            ).is_file()
+        )
+        self.assertFalse((self.target / ".opencode/agents").exists())
+
+        launcher = self.target / ".local/bin/ai-onboard"
+        self.assertTrue(launcher.is_file())
+        self.assertTrue(os.access(launcher, os.X_OK))
+
+        desired_path = self.target / ".ai-onboard/ai-onboard.json"
+        lock_path = self.target / ".ai-onboard/ai-onboard.lock.json"
+        self.assertTrue(desired_path.is_file())
+        self.assertTrue(lock_path.is_file())
+        self.assertFalse((self.target / "ai-onboard.json").exists())
+        self.assertFalse((self.target / ".ai-onboard.lock.json").exists())
+
+        desired = json.loads(desired_path.read_text(encoding="utf-8"))
+        self.assertEqual(desired["scope"], "global")
+
+        environment = os.environ.copy()
+        environment["HOME"] = str(self.target)
+        result = subprocess.run(
+            [str(launcher), "status"],
+            cwd=self.source,
+            env=environment,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(
+            result.returncode,
+            0,
+            msg=f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}",
+        )
+        self.assertIn("Status:", result.stdout)
+
+    def test_global_install_rejects_project_only_features(self) -> None:
+        (self.target / "AGENTS.md").unlink()
+
+        for option in ("--configs", "--notifications"):
+            with self.subTest(option=option):
+                result = self.run_manager(
+                    "--global",
+                    "install",
+                    "--harness",
+                    "codex",
+                    "--profile",
+                    "core",
+                    option,
+                    expected=2,
+                )
+                self.assertIn(
+                    f"{option} is available only for project installs",
+                    result.stderr,
+                )
+
+        self.assertFalse(
+            (self.target / ".ai-onboard/ai-onboard.json").exists()
+        )
+
+    def test_global_install_preserves_an_existing_local_skill(self) -> None:
+        (self.target / "AGENTS.md").unlink()
+        local_skill = self.target / ".agents/skills/core-tool"
+        local_skill.mkdir(parents=True)
+        local_content = "# Locally maintained skill\n"
+        (local_skill / "SKILL.md").write_text(
+            local_content,
+            encoding="utf-8",
+        )
+
+        self.run_manager(
+            "--global",
+            "install",
+            "--harness",
+            "codex",
+            "--profile",
+            "core",
+        )
+
+        self.assertEqual(
+            (local_skill / "SKILL.md").read_text(encoding="utf-8"),
+            local_content,
+        )
+        lock = json.loads(
+            (
+                self.target / ".ai-onboard/ai-onboard.lock.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertNotIn(
+            ".agents/skills/core-tool",
+            {record["path"] for record in lock["artifacts"]},
+        )
+
+        self.run_manager("--global", "uninstall", "--purge")
+        self.assertEqual(
+            (local_skill / "SKILL.md").read_text(encoding="utf-8"),
+            local_content,
+        )
+
     def test_upgrade_stages_conflict_instead_of_overwriting_modified_skill(
         self,
     ) -> None:

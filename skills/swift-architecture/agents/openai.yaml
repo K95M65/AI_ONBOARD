@@ -1,0 +1,4 @@
+interface:
+  display_name: "Swift Architecture"
+  short_description: "Design pragmatic Swift application architecture"
+  default_prompt: "Use $swift-architecture to evaluate and improve this Swift codebase architecture."

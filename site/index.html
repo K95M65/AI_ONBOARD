@@ -175,8 +175,9 @@
           <p class="eyebrow">Portable does not mean disposable</p>
           <h2 id="lifecycle-title">Install deliberately.<br> Upgrade without surprises.</h2>
           <p>
-            Select only the capability profiles a project needs. AI_ONBOARD records the desired state,
-            locks the exact source, protects anything the user has changed, and can signal when fixes land.
+            Install focused capabilities globally for one user or lock them to a project. AI_ONBOARD
+            records the desired state, locks the exact source, protects anything the user has changed, and
+            can signal when fixes land.
           </p>
         </div>
         <ol class="lifecycle-model">
@@ -208,8 +209,12 @@
         <section class="lifecycle-console" aria-labelledby="lifecycle-commands-title">
           <h3 class="visually-hidden" id="lifecycle-commands-title">Example lifecycle commands</h3>
           <div class="lifecycle-command">
-            <span>Install a focused surface</span>
-            <code>python3 …/ai_onboard.py install --profile core --profile product</code>
+            <span>Install skills globally for one user</span>
+            <code>python3 …/ai_onboard.py --global install --profile core --profile apple --agents</code>
+          </div>
+          <div class="lifecycle-command">
+            <span>Lock a focused surface to one project</span>
+            <code>python3 …/ai_onboard.py --target … install --profile core --configs</code>
           </div>
           <div class="lifecycle-command">
             <span>Check and cache release status</span>
@@ -228,7 +233,7 @@
             <code>python3 .ai-onboard/bin/ai_onboard.py uninstall --dry-run</code>
           </div>
           <div class="lifecycle-command">
-            <span>Smoke-test every first-class harness</span>
+            <span>Smoke-test project and global installs for every harness</span>
             <code>python3 scripts/test_deployments.py</code>
           </div>
         </section>

@@ -170,6 +170,9 @@ def validate_route_skills() -> list[str]:
         "state coverage",
         "instrumentation",
         "Swift Testing",
+        "official Apple source",
+        "closest sample",
+        "adaptation record",
         "keyboard/VoiceOver",
         "performance",
         "dependency scan",
@@ -231,8 +234,8 @@ def validate_managed_lifecycle() -> list[str]:
     missing = [value for value in required_copy if value not in text]
     if "scripts/ai_onboard.py" not in app or "--profile core" not in app:
         missing.append("managed quickstart")
-    if "--profile product" not in app:
-        missing.append("product quickstart profile")
+    if "--global install" not in app or "--profile apple" not in app:
+        missing.append("global Apple quickstart")
     if missing:
         return [
             "site: missing managed lifecycle explanation: " + ", ".join(missing)

@@ -1,7 +1,7 @@
 const REPOSITORY_URL = "https://github.com/K95M65/AI_ONBOARD";
 const QUICKSTART = `git clone https://github.com/K95M65/AI_ONBOARD.git
-python3 AI_ONBOARD/scripts/ai_onboard.py --target /path/to/project install \\
-  --harness claude,codex,opencode --profile core --profile product --agents --configs`;
+python3 AI_ONBOARD/scripts/ai_onboard.py --global install \\
+  --harness claude,codex,opencode --profile core --profile apple --agents`;
 
 const routes = {
   website: {
@@ -34,7 +34,7 @@ const routes = {
       { label: "Orchestrator", title: "Own Apple implementation and review", items: ["develop-apple-platform-app"] },
       { label: "Specialists", title: "Load the relevant platform expertise", items: ["swift-architecture", "swift-concurrency", "swiftui-ui-patterns", "swiftdata-expert"] },
       { label: "Independent lenses", title: "Audit the native experience", items: ["design-review", "accessibility-review", "verifier"] },
-      { label: "Evidence", title: "Build and exercise the target", items: ["Swift Testing", "keyboard/VoiceOver", "performance"] },
+      { label: "Evidence", title: "Build from current Apple guidance and exercise the target", items: ["official Apple source", "closest sample", "adaptation record", "Swift Testing"] },
     ],
   },
   security: {

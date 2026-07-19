@@ -1,0 +1,4 @@
+interface:
+  display_name: "SwiftUI Accessibility Auditor"
+  short_description: "Audit SwiftUI accessibility with evidence"
+  default_prompt: "Use $swiftui-accessibility-auditor to audit and fix this SwiftUI experience."

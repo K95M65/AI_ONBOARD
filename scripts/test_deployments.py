@@ -325,6 +325,26 @@ def installed_paths(
     )
 
 
+def global_installed_paths(
+    home: Path,
+    harness: str,
+) -> tuple[Path, Path]:
+    if harness == "claude":
+        return (
+            home / ".claude" / "skills",
+            home / ".claude" / "agents",
+        )
+    if harness == "codex":
+        return (
+            home / ".agents" / "skills",
+            home / ".codex" / "agents",
+        )
+    return (
+        home / ".agents" / "skills",
+        home / ".config" / "opencode" / "agents",
+    )
+
+
 def verify_installed_layout(
     target: Path,
     harness: str,
@@ -378,6 +398,66 @@ def verify_installed_layout(
     if harness != "opencode":
         require_absent(target / ".opencode" / "agents")
 
+    return len(actual_skills), len(actual_agents)
+
+
+def verify_global_installed_layout(
+    home: Path,
+    harness: str,
+    profiles: list[str],
+    package_version: str,
+) -> tuple[int, int]:
+    desired_path = home / ".ai-onboard/ai-onboard.json"
+    lock_path = home / ".ai-onboard/ai-onboard.lock.json"
+    launcher = home / ".local/bin/ai-onboard"
+    require_file(desired_path)
+    require_file(lock_path)
+    require_file(launcher)
+    if not os.access(launcher, os.X_OK):
+        raise DeploymentFailure("global launcher is not executable")
+    require_absent(home / "ai-onboard.json")
+    require_absent(home / ".ai-onboard.lock.json")
+
+    desired = read_json(desired_path)
+    lock = read_json(lock_path)
+    assert_equal(desired.get("scope"), "global", "global desired scope")
+    assert_equal(desired.get("harnesses"), [harness], "global harnesses")
+    assert_equal(desired.get("profiles"), profiles, "global profiles")
+    assert_equal(
+        desired.get("features"),
+        {
+            "agents": True,
+            "configs": False,
+            "notifications": False,
+            "workflow_foundations": True,
+        },
+        "global desired features",
+    )
+    assert_equal(
+        lock.get("package_version"),
+        package_version,
+        "global locked version",
+    )
+
+    skills_root, agents_root = global_installed_paths(home, harness)
+    actual_skills = {
+        path.name
+        for path in skills_root.iterdir()
+        if path.is_dir() and (path / "SKILL.md").is_file()
+    }
+    actual_agents = {
+        path.name for path in agents_root.iterdir() if path.is_file()
+    }
+    assert_equal(
+        actual_skills,
+        expected_skill_names(),
+        f"{harness} global skills",
+    )
+    assert_equal(
+        actual_agents,
+        expected_agent_names(harness),
+        f"{harness} global agents",
+    )
     return len(actual_skills), len(actual_agents)
 
 
@@ -473,6 +553,82 @@ def verify_lifecycle(
         "uninstall dry-run project snapshot",
     )
     require_file(manager)
+
+
+def verify_global_lifecycle(
+    home: Path,
+    *,
+    source: Path,
+    environment: dict[str, str],
+    verbose: bool,
+) -> None:
+    launcher = home / ".local/bin/ai-onboard"
+    prefix = [str(launcher), "--source", str(source)]
+
+    status = run_command(
+        [*prefix, "status"],
+        environment=environment,
+        verbose=verbose,
+    )
+    if "0 drifted managed item(s)" not in status.stdout:
+        raise DeploymentFailure(
+            f"unexpected global status output:\n{status.stdout}"
+        )
+
+    doctor = run_command(
+        [*prefix, "doctor"],
+        environment=environment,
+        verbose=verbose,
+    )
+    if "Doctor passed" not in doctor.stdout:
+        raise DeploymentFailure(
+            f"unexpected global doctor output:\n{doctor.stdout}"
+        )
+
+    update = run_command(
+        [*prefix, "upgrade", "--check", "--json"],
+        environment=environment,
+        verbose=verbose,
+    )
+    update_status = json.loads(update.stdout)
+    assert_equal(
+        update_status.get("update_available"),
+        False,
+        "global local-source update availability",
+    )
+
+    before_sync_preview = snapshot_tree(home)
+    run_command(
+        [*prefix, "sync", "--dry-run"],
+        environment=environment,
+        verbose=verbose,
+    )
+    assert_equal(
+        snapshot_tree(home),
+        before_sync_preview,
+        "global sync dry-run snapshot",
+    )
+
+    before_uninstall_preview = snapshot_tree(home)
+    run_command(
+        [str(launcher), "uninstall", "--dry-run"],
+        environment=environment,
+        verbose=verbose,
+    )
+    assert_equal(
+        snapshot_tree(home),
+        before_uninstall_preview,
+        "global uninstall dry-run snapshot",
+    )
+
+
+def verify_global_uninstalled_layout(home: Path, harness: str) -> None:
+    skills_root, agents_root = global_installed_paths(home, harness)
+    require_empty_or_absent(skills_root)
+    require_empty_or_absent(agents_root)
+    require_absent(home / ".local/bin/ai-onboard")
+    require_absent(home / ".ai-onboard/ai-onboard.lock.json")
+    require_file(home / ".ai-onboard/ai-onboard.json")
 
 
 def verify_uninstalled_layout(
@@ -607,7 +763,67 @@ def test_deployment(
         verify_uninstalled_layout(target, harness, config_path)
 
     print(
-        f"PASS {harness}: AI_ONBOARD {package_version}, "
+        f"PASS {harness} project: AI_ONBOARD {package_version}, "
+        f"{skill_count} skills, {agent_count} agents"
+    )
+
+
+def test_global_deployment(
+    harness: str,
+    *,
+    source: Path,
+    verbose: bool,
+) -> None:
+    manifest = read_json(MANIFEST)
+    profiles = sorted(str(name) for name in manifest.get("profiles", {}))
+    package_version = str(manifest.get("version", ""))
+
+    with tempfile.TemporaryDirectory(
+        prefix=f"ai-onboard-{harness}-global-"
+    ) as temporary:
+        home = Path(temporary) / "home"
+        environment = deployment_environment(home)
+        run_command(
+            [
+                sys.executable,
+                str(MANAGER),
+                "--source",
+                str(source),
+                "--target",
+                str(home),
+                "--global",
+                "install",
+                "--harness",
+                harness,
+                "--profile",
+                ",".join(profiles),
+                "--agents",
+                "--workflow-foundations",
+            ],
+            environment=environment,
+            verbose=verbose,
+        )
+        skill_count, agent_count = verify_global_installed_layout(
+            home,
+            harness,
+            profiles,
+            package_version,
+        )
+        verify_global_lifecycle(
+            home,
+            source=source,
+            environment=environment,
+            verbose=verbose,
+        )
+        run_command(
+            [str(home / ".local/bin/ai-onboard"), "uninstall"],
+            environment=environment,
+            verbose=verbose,
+        )
+        verify_global_uninstalled_layout(home, harness)
+
+    print(
+        f"PASS {harness} global: AI_ONBOARD {package_version}, "
         f"{skill_count} skills, {agent_count} agents"
     )
 
@@ -640,6 +856,11 @@ def main() -> int:
         for harness in harnesses:
             try:
                 test_deployment(
+                    harness,
+                    source=source,
+                    verbose=args.verbose,
+                )
+                test_global_deployment(
                     harness,
                     source=source,
                     verbose=args.verbose,

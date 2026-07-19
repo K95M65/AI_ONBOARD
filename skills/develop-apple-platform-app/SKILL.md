@@ -33,6 +33,17 @@ accepted platform and design decisions unless implementation evidence exposes a 
 For macOS lifecycle, window, document, command, settings, integration, and sandbox decisions, read
 [references/macos-engineering.md](references/macos-engineering.md).
 
+## Ground platform decisions in current Apple sources
+
+Read [references/apple-source-selection.md](references/apple-source-selection.md) when choosing
+version-sensitive APIs, adapting an Apple sample, or crossing a build, signing, entitlement, persistence,
+accessibility, or distribution boundary.
+
+Prefer the narrow official symbol or framework page and the closest current Apple sample. Inspect the
+sample's full project requirements, ownership model, error behavior, entitlements, and tests before
+adapting its technique. Record what was adopted and what was rejected because of the repository's targets
+or architecture. Do not treat incidental sample structure as a universal Apple recommendation.
+
 ## Route bounded questions to specialists
 
 Load only the specialists relevant to the detected project and task:

@@ -7,7 +7,52 @@ refuses to overwrite or remove divergent user content. It is a dependency-free P
 `templates/link.sh` remains available for legacy copy-based wiring. It is intentionally not upgrade-aware;
 use the manager for new installations.
 
-## Install from a clone
+## Install globally for one user
+
+Use an explicit global scope when the selected skills and optional reference agents should be available
+across repositories:
+
+```bash
+python3 /path/to/AI_ONBOARD/scripts/ai_onboard.py \
+  --global \
+  install \
+  --harness claude,codex,opencode \
+  --profile core \
+  --profile apple \
+  --agents
+```
+
+The global install uses native user-level discovery paths:
+
+| Harness surface | Managed destination |
+|-----------------|---------------------|
+| Codex and OpenCode portable skills | `~/.agents/skills/` |
+| Claude Code skills | `~/.claude/skills/` |
+| Codex reference agents | `~/.codex/agents/` |
+| Claude Code reference agents | `~/.claude/agents/` |
+| OpenCode reference agents | `~/.config/opencode/agents/` |
+| Desired state and lock | `~/.ai-onboard/` |
+| User command | `~/.local/bin/ai-onboard` |
+
+Add `~/.local/bin` to `PATH` when the installer reports that it is missing. The installed command defaults
+to global scope:
+
+```bash
+ai-onboard status
+ai-onboard doctor
+ai-onboard upgrade --check --json
+ai-onboard uninstall --dry-run
+```
+
+Global installs deliberately do not install `AGENTS.md`, harness configuration, project slash commands,
+scheduled GitHub workflows, or macOS project notifications. Keep shared project facts in each repository's
+`AGENTS.md`; use a project install for managed configuration or notification assets. `--configs` and
+`--notifications` therefore fail closed with `--global`.
+
+Global and project installs use separate desired-state and lockfile locations. A global upgrade cannot
+silently rewrite a project's managed copies, and a project upgrade cannot change the user-global package.
+
+## Install into a project from a clone
 
 Start with a project `AGENTS.md`. Copy [`templates/AGENTS.md`](../templates/AGENTS.md) or generate one with
 the `agents-md-init` skill, then run:
@@ -140,7 +185,8 @@ depth.
 
 ## Pre-publish deployment smoke tests
 
-Before pushing a package build, test complete isolated deployments for all first-class harnesses:
+Before pushing a package build, test complete isolated project and global deployments for all first-class
+harnesses:
 
 ```bash
 python3 scripts/test_deployments.py
@@ -154,12 +200,13 @@ python3 scripts/test_deployments.py --harness codex --verbose
 python3 scripts/test_deployments.py --harness opencode
 ```
 
-Each run snapshots the current package content so uncommitted work remains testable, creates a temporary
-project, preserves seeded user configuration, installs all profiles with agents, configs, notifications,
-and workflow foundations, then exercises `status`, `doctor`, the structured local-source update check, the
-installed Git identity guard, sync and uninstall previews, and actual cleanup. No harness login, provider
-credential, or model API call is required. CI runs the same contract as a three-harness matrix on every
-push and pull request.
+Each run snapshots the current package content so uncommitted work remains testable. For every harness it
+tests both a temporary project install and an isolated fake-home global install. The project path preserves
+seeded user configuration and exercises all profiles, agents, configs, notifications, workflow
+foundations, Git identity, updates, previews, and cleanup. The global path verifies native user discovery
+locations, launcher behavior, desired state, drift detection, updates, previews, and cleanup. No harness
+login, provider credential, or model API call is required. CI runs the same contract as a three-harness
+matrix on every push and pull request.
 
 The default package channel is `stable`, which resolves the latest versioned GitHub Release. Use `edge`
 only when a project intentionally tracks the latest commit on `main`, or set `source.channel` to a tag or
