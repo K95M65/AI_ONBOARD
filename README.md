@@ -135,6 +135,21 @@ Update checks classify releases as `security`, `fix`, `feature`, or `maintenance
 notice when supported, `--json` provides a stable machine contract, and `--exit-code` returns `10` when an
 update is available.
 
+Protect Git commit metadata before publishing:
+
+```bash
+python3 .ai-onboard/bin/ai_onboard.py check-git
+python3 .ai-onboard/bin/ai_onboard.py check-git --history-only
+```
+
+`check-git` requires both the effective author and committer process identities—and, by default, every
+commit reachable from local refs—to use GitHub's `users.noreply.github.com` domain. It reports unsafe roles
+and commit IDs without echoing the private address. The AI_ONBOARD source checkout also ships tracked
+commit, merge, patch, and pre-push guards; activate them once with
+`git config core.hooksPath .githooks`. The pre-push guard consumes Git's exact outgoing object ranges, so
+it catches preserved or explicitly overridden authors—even from a direct object-ID push—before network
+publication.
+
 [`templates/link.sh`](templates/link.sh) remains as a legacy copy-based compatibility path. It is useful for
 simple wiring but does not provide lifecycle tracking.
 
@@ -164,9 +179,11 @@ python3 scripts/sync_project_docs.py          # regenerate catalog + README coun
 python3 scripts/sync_project_docs.py --check  # fail when they are stale
 python3 scripts/check_skills.py               # validate skill structure, links, and lexical trigger overlap
 python3 scripts/check_harness_configs.py       # validate Claude, Codex, and OpenCode project boundaries
-python3 -m unittest discover -v tests           # validate lifecycle and deployment contracts
-python3 scripts/test_deployments.py             # smoke-test all three complete harness deployments
+python3 scripts/ai_onboard.py --target . check-git # validate private Git identities and history
+python3 -m unittest discover -v tests          # validate lifecycle and deployment contracts
+python3 scripts/test_deployments.py            # smoke-test all three complete harness deployments
 python3 -m http.server 4173 --directory site  # preview at http://localhost:4173
+shellcheck .githooks/pre-* templates/link.sh  # validate project Git and legacy shell wiring
 ```
 
 When user-facing behavior, capabilities, setup, or repository structure changes, update the nearest README

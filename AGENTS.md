@@ -24,12 +24,13 @@ Run checks relevant to the files you change. Before finishing a multi-file or pu
 python3 scripts/sync_project_docs.py --check
 python3 scripts/check_skills.py
 python3 scripts/check_harness_configs.py
+python3 scripts/ai_onboard.py --target . check-git
 python3 -m unittest discover -v tests
 python3 scripts/test_deployments.py
 python3 scripts/check_site.py
 node --check site/app.js
 bash -n templates/link.sh
-shellcheck templates/link.sh
+shellcheck .githooks/pre-* templates/link.sh
 git diff --check
 ```
 
@@ -66,6 +67,8 @@ find . -path ./skills/cloudflare -prune -o -name '*.sh' -type f -print0 \
   multi-file, or release-bound changes; use direct checks for small, low-risk edits.
 - Preserve existing user changes in a dirty worktree. Never commit secrets, `.env` files, credentials, or
   generated private data.
+- Keep this checkout's tracked Git guards active with `git config core.hooksPath .githooks`; commit,
+  merge, and patch hooks validate process identities, while the pre-push hook scans actual commit metadata.
 - Do not deploy, publish, release, force-push, or perform destructive operations unless the user explicitly
   authorizes that external action.
 

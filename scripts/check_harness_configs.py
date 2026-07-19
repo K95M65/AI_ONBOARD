@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import tomllib
@@ -54,6 +55,7 @@ def validate_agents_md(errors: list[str]) -> None:
         "scripts/check_harness_configs.py",
         "scripts/check_skills.py",
         "scripts/check_site.py",
+        "scripts/ai_onboard.py --target . check-git",
     ):
         if required not in text:
             errors.append(f"AGENTS.md: missing required check {required!r}")
@@ -181,6 +183,25 @@ def validate_paths_and_docs(errors: list[str]) -> None:
     ):
         if not required_path.is_file():
             errors.append(f"{required_path}: required notification asset is missing")
+    hooks = {
+        "pre-commit": "--identity-only",
+        "pre-merge-commit": "--identity-only",
+        "pre-applypatch": "--identity-only",
+        "pre-push": "--pre-push",
+    }
+    for hook_name, required_scope in hooks.items():
+        hook_path = ROOT / ".githooks" / hook_name
+        if not hook_path.is_file():
+            errors.append(f"{hook_path}: required Git identity hook is missing")
+            continue
+        if not os.access(hook_path, os.X_OK):
+            errors.append(f"{hook_path}: Git hook must be executable")
+        hook = hook_path.read_text(encoding="utf-8")
+        for required in ("check-git", required_scope):
+            if required not in hook:
+                errors.append(
+                    f"{hook_path}: Git hook is missing {required!r}"
+                )
 
     workflow_path = (
         ROOT
@@ -298,6 +319,26 @@ def validate_paths_and_docs(errors: list[str]) -> None:
                     f"{lint_workflow_path}: deploy-smoke must not contain "
                     f"{forbidden!r}"
                 )
+        git_identity_job = re.search(
+            r"(?ms)^  git-identity:\s*\n"
+            r"(?P<body>.*?)(?=^  [a-zA-Z0-9_-]+:\s*\n|\Z)",
+            active_workflow,
+        )
+        if not git_identity_job:
+            errors.append(
+                f"{lint_workflow_path}: git-identity job is missing"
+            )
+        else:
+            git_identity_body = git_identity_job.group("body")
+            for required in (
+                "fetch-depth: 0",
+                "check-git --history-only",
+            ):
+                if required not in git_identity_body:
+                    errors.append(
+                        f"{lint_workflow_path}: git-identity job is missing "
+                        f"{required!r}"
+                    )
 
     docs = "\n".join(
         path.read_text(encoding="utf-8")

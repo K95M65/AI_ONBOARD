@@ -15,12 +15,14 @@ import hashlib
 import json
 import os
 import plistlib
+import queue
 import re
 import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
+import threading
 import time
 import tomllib
 import urllib.error
@@ -45,6 +47,11 @@ VERSION_PATTERN = re.compile(
     r"\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?"
     r"(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?"
 )
+GITHUB_NOREPLY_PATTERN = re.compile(
+    r"^[^@\s<>]+@users\.noreply\.github\.com$",
+    re.IGNORECASE,
+)
+GIT_IDENT_EMAIL_PATTERN = re.compile(r"<([^<>\s]+)>\s+\d+\s+[+-]\d{4}$")
 NOTIFIER_LABEL_PREFIX = "com.rsthrives.ai-onboard-update"
 REVIEW_REQUIRED_ARTIFACTS = {
     ".github/workflows/ai-onboard-update-check.yml",
@@ -342,6 +349,222 @@ def git_revision(root: Path, content_digest: str) -> str:
             "package source has uncommitted managed content; commit it before install"
         )
     return result.stdout.strip()
+
+
+def git_output(target: Path, *arguments: str) -> str:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(target), *arguments],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except OSError as exc:
+        raise LifecycleError("git is required for check-git") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise LifecycleError(
+            f"git timed out during check-git: {' '.join(arguments)}"
+        ) from exc
+    except subprocess.CalledProcessError as exc:
+        raise LifecycleError(
+            f"cannot inspect Git repository for check-git: {' '.join(arguments)}"
+        ) from exc
+    return result.stdout.strip()
+
+
+def git_ident_email(target: Path, variable: str) -> str:
+    identity = git_output(target, "var", variable)
+    match = GIT_IDENT_EMAIL_PATTERN.search(identity)
+    if not match:
+        raise LifecycleError(f"git returned an invalid {variable} value")
+    return match.group(1)
+
+
+def is_github_noreply(email: str) -> bool:
+    return bool(GITHUB_NOREPLY_PATTERN.fullmatch(email))
+
+
+def git_stream_lines(
+    target: Path,
+    *arguments: str,
+    max_line_bytes: int = 4096,
+    timeout_seconds: int = 30,
+) -> Iterator[str]:
+    try:
+        process = subprocess.Popen(
+            ["git", "-C", str(target), *arguments],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError as exc:
+        raise LifecycleError("git is required for check-git") from exc
+
+    assert process.stdout is not None
+    chunks: queue.Queue[bytes | None] = queue.Queue(maxsize=8)
+
+    def read_stdout() -> None:
+        try:
+            while chunk := process.stdout.read(4096):
+                chunks.put(chunk)
+        finally:
+            chunks.put(None)
+
+    reader = threading.Thread(target=read_stdout, daemon=True)
+    reader.start()
+    deadline = time.monotonic() + timeout_seconds
+    buffered = bytearray()
+
+    try:
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise LifecycleError("git timed out during check-git")
+            try:
+                chunk = chunks.get(timeout=remaining)
+            except queue.Empty as exc:
+                raise LifecycleError("git timed out during check-git") from exc
+            if chunk is None:
+                break
+            buffered.extend(chunk)
+            while b"\n" in buffered:
+                raw_line, _, remainder = buffered.partition(b"\n")
+                buffered = bytearray(remainder)
+                if len(raw_line) > max_line_bytes:
+                    raise LifecycleError(
+                        "git returned oversized identity metadata"
+                    )
+                try:
+                    yield raw_line.decode("utf-8")
+                except UnicodeDecodeError as exc:
+                    raise LifecycleError(
+                        "git returned invalid identity metadata"
+                    ) from exc
+            if len(buffered) > max_line_bytes:
+                raise LifecycleError(
+                    "git returned oversized identity metadata"
+                )
+        if buffered:
+            try:
+                yield buffered.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise LifecycleError(
+                    "git returned invalid identity metadata"
+                ) from exc
+        remaining = max(0.0, deadline - time.monotonic())
+        try:
+            return_code = process.wait(timeout=remaining)
+        except subprocess.TimeoutExpired as exc:
+            raise LifecycleError("git timed out during check-git") from exc
+        if return_code:
+            raise LifecycleError("cannot inspect Git metadata for check-git")
+    except BaseException:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+        raise
+    finally:
+        process.stdout.close()
+
+
+def git_history_identities(
+    target: Path,
+    revisions: tuple[str, ...] = ("--all",),
+) -> Iterator[tuple[str, str, str]]:
+    for line in git_stream_lines(
+        target,
+        "log",
+        "--format=%H%x09%ae%x09%ce",
+        *revisions,
+    ):
+        parts = line.split("\t")
+        if len(parts) != 3:
+            raise LifecycleError("git returned invalid commit identity metadata")
+        yield parts[0], parts[1], parts[2]
+
+
+def pre_push_revisions() -> Iterator[tuple[str, ...]]:
+    oid_pattern = re.compile(r"(?:[0-9a-f]{40}|[0-9a-f]{64})")
+    while True:
+        line = sys.stdin.readline(4097)
+        if not line:
+            return
+        if len(line) > 4096:
+            raise LifecycleError("git pre-push metadata is oversized")
+        parts = line.split()
+        if len(parts) != 4:
+            raise LifecycleError("git pre-push metadata is invalid")
+        _, local_oid, _, remote_oid = parts
+        if not oid_pattern.fullmatch(local_oid):
+            raise LifecycleError("git pre-push local object ID is invalid")
+        if not oid_pattern.fullmatch(remote_oid):
+            raise LifecycleError("git pre-push remote object ID is invalid")
+        if set(local_oid) == {"0"}:
+            continue
+        if set(remote_oid) == {"0"}:
+            yield (local_oid,)
+        else:
+            yield (local_oid, "--not", remote_oid)
+
+
+def command_check_git(
+    target: Path,
+    *,
+    identity_only: bool,
+    history_only: bool,
+    pre_push: bool,
+) -> int:
+    git_output(target, "rev-parse", "--is-inside-work-tree")
+    issues = 0
+
+    if not history_only and not pre_push:
+        for role, variable in (
+            ("author", "GIT_AUTHOR_IDENT"),
+            ("committer", "GIT_COMMITTER_IDENT"),
+        ):
+            if not is_github_noreply(git_ident_email(target, variable)):
+                print(
+                    f"  error: Git {role} email is not a GitHub no-reply address"
+                )
+                issues += 1
+        if not issues:
+            print("Git process identity passed")
+
+    if not identity_only:
+        history_count = 0
+        history_issues = 0
+        revisions = (
+            pre_push_revisions()
+            if pre_push
+            else iter([("--all",)])
+        )
+        for revision in revisions:
+            for commit, author_email, committer_email in git_history_identities(
+                target,
+                revision,
+            ):
+                history_count += 1
+                unsafe_roles = []
+                if not is_github_noreply(author_email):
+                    unsafe_roles.append("author")
+                if not is_github_noreply(committer_email):
+                    unsafe_roles.append("committer")
+                if unsafe_roles:
+                    roles = " and ".join(unsafe_roles)
+                    print(
+                        f"  error: commit {commit[:12]} {roles} email "
+                        "is not a GitHub no-reply address"
+                    )
+                    history_issues += 1
+        issues += history_issues
+        if not history_issues:
+            label = "outgoing" if pre_push else "reachable"
+            print(f"Git history passed: {history_count} {label} commit(s)")
+
+    if issues:
+        print(f"Git identity check found {issues} issue(s)")
+        return 1
+    return 0
 
 
 def load_source(root: Path, revision: str | None = None) -> Source:
@@ -2244,6 +2467,27 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--verbose", action="store_true")
     subparsers.add_parser("doctor")
 
+    check_git = subparsers.add_parser(
+        "check-git",
+        help="Require GitHub no-reply author and committer identities",
+    )
+    check_git_scope = check_git.add_mutually_exclusive_group()
+    check_git_scope.add_argument(
+        "--identity-only",
+        action="store_true",
+        help="Check only the effective Git author and committer process",
+    )
+    check_git_scope.add_argument(
+        "--history-only",
+        action="store_true",
+        help="Check only commits reachable from local Git refs",
+    )
+    check_git_scope.add_argument(
+        "--pre-push",
+        action="store_true",
+        help="Check exact outgoing ranges supplied by a Git pre-push hook",
+    )
+
     uninstall = subparsers.add_parser("uninstall")
     uninstall.add_argument("--purge", action="store_true")
     uninstall.add_argument("--dry-run", action="store_true")
@@ -2273,6 +2517,13 @@ def main() -> int:
             return command_status(target, args.verbose)
         if args.command == "doctor":
             return command_doctor(target)
+        if args.command == "check-git":
+            return command_check_git(
+                target,
+                identity_only=args.identity_only,
+                history_only=args.history_only,
+                pre_push=args.pre_push,
+            )
         if args.command == "uninstall":
             return command_uninstall(args, target)
         if args.command == "cleanup":

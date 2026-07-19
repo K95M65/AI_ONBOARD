@@ -109,6 +109,35 @@ An applied `sync` or `upgrade` clears the cached notice so `doctor` does not rep
 landed. Package release metadata classifies a change as `security`, `fix`, `feature`, or `maintenance`;
 the classification and summary come from committed package metadata, not generated marketing copy.
 
+## Protect Git identity
+
+The installed manager can prevent a personal address from entering commit metadata:
+
+```bash
+python3 .ai-onboard/bin/ai_onboard.py check-git
+```
+
+The default checks the effective `GIT_AUTHOR_IDENT` and `GIT_COMMITTER_IDENT` process values plus every
+commit reachable from local refs. `--identity-only` is suitable for a pre-commit hook;
+`--history-only` is suitable for CI after a full-history checkout. `--pre-push` consumes the standard Git
+pre-push hook input and checks the exact outgoing object ranges, including commits pushed directly by
+object ID. A failure identifies the unsafe role and commit ID without printing the address itself. The
+command returns `0` when the selected checks pass, `1` for policy violations, and `2` when Git or repository
+metadata cannot be inspected.
+
+This policy is explicit rather than part of `doctor`: GitHub no-reply addresses are appropriate for
+GitHub-hosted projects but should not be imposed on portable installations that use another forge.
+AI_ONBOARD's own checkout activates tracked commit, merge, patch, and pre-push hooks with:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+The commit-producing hooks catch unsafe process defaults early. The pre-push hook then checks the exact
+outgoing commit objects, covering dangling object-ID pushes plus preserved or explicitly overridden authors
+before they leave the machine. CI repeats the reachable-history check after a full checkout as defense in
+depth.
+
 ## Pre-publish deployment smoke tests
 
 Before pushing a package build, test complete isolated deployments for all first-class harnesses:
@@ -125,11 +154,12 @@ python3 scripts/test_deployments.py --harness codex --verbose
 python3 scripts/test_deployments.py --harness opencode
 ```
 
-Each run creates a temporary project, preserves seeded user configuration, installs all profiles with
-agents, configs, notifications, and workflow foundations, then exercises `status`, `doctor`, the structured
-local-source update check, sync and uninstall previews, and actual cleanup. No harness login, provider
-credential, or model API call is required. CI runs the same contract as a three-harness matrix on every push
-and pull request.
+Each run snapshots the current package content so uncommitted work remains testable, creates a temporary
+project, preserves seeded user configuration, installs all profiles with agents, configs, notifications,
+and workflow foundations, then exercises `status`, `doctor`, the structured local-source update check, the
+installed Git identity guard, sync and uninstall previews, and actual cleanup. No harness login, provider
+credential, or model API call is required. CI runs the same contract as a three-harness matrix on every
+push and pull request.
 
 The initial package channel is `edge`, which resolves the latest commit on `main`. Change
 `source.channel` in `ai-onboard.json` to `stable` after the repository publishes versioned GitHub Releases,

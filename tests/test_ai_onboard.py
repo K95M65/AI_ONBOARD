@@ -1172,5 +1172,184 @@ class LifecycleManagerTests(unittest.TestCase):
         self.assertFalse(missing.exists())
 
 
+class GitIdentityCheckTests(unittest.TestCase):
+    NOREPLY = "5134637+K95M65@users.noreply.github.com"
+    PRIVATE = "maintainer@example.com"
+
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.repository = Path(self.temp.name) / "repository"
+        self.repository.mkdir()
+        self.git("init", "-q", "-b", "main")
+        self.git("config", "commit.gpgsign", "false")
+        self.git("config", "user.name", "Test Maintainer")
+        self.git("config", "user.email", self.NOREPLY)
+
+    def git(
+        self,
+        *args: str,
+        email: str | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        environment = os.environ.copy()
+        if email:
+            environment.update(
+                {
+                    "GIT_AUTHOR_NAME": "Test Maintainer",
+                    "GIT_AUTHOR_EMAIL": email,
+                    "GIT_COMMITTER_NAME": "Test Maintainer",
+                    "GIT_COMMITTER_EMAIL": email,
+                }
+            )
+        return subprocess.run(
+            ["git", "-C", str(self.repository), *args],
+            env=environment,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+
+    def commit(self, email: str) -> str:
+        marker = self.repository / "marker.txt"
+        marker.write_text(f"{email}\n", encoding="utf-8")
+        self.git("add", "marker.txt")
+        self.git("commit", "-q", "-m", "test identity", email=email)
+        return self.git("rev-parse", "HEAD").stdout.strip()
+
+    def check(
+        self,
+        *args: str,
+        email: str,
+        expected: int,
+        input_text: str | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        environment = os.environ.copy()
+        environment.update(
+            {
+                "GIT_AUTHOR_NAME": "Test Maintainer",
+                "GIT_AUTHOR_EMAIL": email,
+                "GIT_COMMITTER_NAME": "Test Maintainer",
+                "GIT_COMMITTER_EMAIL": email,
+            }
+        )
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(MANAGER),
+                "--target",
+                str(self.repository),
+                "check-git",
+                *args,
+            ],
+            env=environment,
+            input=input_text,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(
+            result.returncode,
+            expected,
+            msg=f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}",
+        )
+        return result
+
+    def test_check_git_accepts_noreply_process_and_history(self) -> None:
+        self.commit(self.NOREPLY)
+
+        result = self.check(email=self.NOREPLY, expected=0)
+
+        self.assertIn("Git process identity passed", result.stdout)
+        self.assertIn("Git history passed: 1 reachable commit(s)", result.stdout)
+
+    def test_check_git_rejects_private_process_email_without_echoing_it(
+        self,
+    ) -> None:
+        self.commit(self.NOREPLY)
+
+        result = self.check(
+            "--identity-only",
+            email=self.PRIVATE,
+            expected=1,
+        )
+
+        self.assertIn(
+            "author email is not a GitHub no-reply address",
+            result.stdout,
+        )
+        self.assertIn(
+            "committer email is not a GitHub no-reply address",
+            result.stdout,
+        )
+        self.assertNotIn(self.PRIVATE, result.stdout)
+
+    def test_check_git_rejects_private_history_email_without_echoing_it(
+        self,
+    ) -> None:
+        commit = self.commit(self.PRIVATE)
+
+        result = self.check(
+            "--history-only",
+            email=self.NOREPLY,
+            expected=1,
+        )
+
+        self.assertIn(commit[:12], result.stdout)
+        self.assertIn("author and committer email", result.stdout)
+        self.assertNotIn(self.PRIVATE, result.stdout)
+
+    def test_history_check_catches_author_override_before_push(self) -> None:
+        marker = self.repository / "marker.txt"
+        marker.write_text("override\n", encoding="utf-8")
+        self.git("add", "marker.txt")
+        self.git(
+            "commit",
+            "-q",
+            "-m",
+            "test author override",
+            "--author",
+            f"Override Author <{self.PRIVATE}>",
+            email=self.NOREPLY,
+        )
+
+        result = self.check(
+            "--history-only",
+            email=self.NOREPLY,
+            expected=1,
+        )
+
+        self.assertIn(
+            "author email is not a GitHub no-reply address",
+            result.stdout,
+        )
+        self.assertNotIn("author and committer", result.stdout)
+        self.assertNotIn(self.PRIVATE, result.stdout)
+
+    def test_pre_push_checks_dangling_object_from_hook_input(self) -> None:
+        safe_commit = self.commit(self.NOREPLY)
+        private_commit = self.commit(self.PRIVATE)
+        self.git("reset", "--hard", safe_commit)
+
+        history = self.check(
+            "--history-only",
+            email=self.NOREPLY,
+            expected=0,
+        )
+        self.assertNotIn(private_commit[:12], history.stdout)
+
+        result = self.check(
+            "--pre-push",
+            email=self.NOREPLY,
+            expected=1,
+            input_text=(
+                f"refs/heads/private {private_commit} "
+                f"refs/heads/private {'0' * 40}\n"
+            ),
+        )
+
+        self.assertIn(private_commit[:12], result.stdout)
+        self.assertNotIn(self.PRIVATE, result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

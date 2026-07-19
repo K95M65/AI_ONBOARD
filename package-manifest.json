@@ -6,7 +6,7 @@
   "default_channel": "edge",
   "release": {
     "classification": "feature",
-    "summary": "Managed installs, structured update notifications, hardened source archives, and full Claude, Codex, and OpenCode deployment smoke tests.",
+    "summary": "Managed installs, structured update notifications, GitHub no-reply identity guards, hardened source archives, and full Claude, Codex, and OpenCode deployment smoke tests.",
     "notes_url": "https://github.com/K95M65/AI_ONBOARD/releases"
   },
   "profiles": {

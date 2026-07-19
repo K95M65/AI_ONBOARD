@@ -4,16 +4,19 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
+import re
+import shutil
 import stat
 import subprocess
 import sys
 import tempfile
 import tomllib
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +25,18 @@ MANIFEST = ROOT / "package-manifest.json"
 CATALOG = ROOT / "site" / "data" / "catalog.json"
 SUPPORTED_HARNESSES = ("claude", "codex", "opencode")
 AGENTS_SENTINEL = "# Deployment smoke-test project\n"
+NOREPLY_EMAIL = "41898282+github-actions[bot]@users.noreply.github.com"
+PACKAGE_SOURCE_PATHS = (
+    "package-manifest.json",
+    "site/data/catalog.json",
+    "scripts/ai_onboard.py",
+    "scripts/install_macos_update_notifier.py",
+    "templates/configs",
+    "templates/commands",
+    "templates/notifications",
+    "agents",
+    "skills",
+)
 
 
 class DeploymentFailure(RuntimeError):
@@ -78,9 +93,59 @@ def deployment_environment(home: Path) -> dict[str, str]:
             "XDG_CONFIG_HOME": str(home / ".config"),
             "XDG_DATA_HOME": str(home / ".local" / "share"),
             "XDG_STATE_HOME": str(home / ".local" / "state"),
+            "GIT_AUTHOR_NAME": "AI_ONBOARD deployment test",
+            "GIT_AUTHOR_EMAIL": NOREPLY_EMAIL,
+            "GIT_COMMITTER_NAME": "AI_ONBOARD deployment test",
+            "GIT_COMMITTER_EMAIL": NOREPLY_EMAIL,
         }
     )
     return environment
+
+
+@contextlib.contextmanager
+def deployment_source() -> Iterator[Path]:
+    """Snapshot current package content so dirty changes remain testable."""
+    with tempfile.TemporaryDirectory(
+        prefix="ai-onboard-package-source-"
+    ) as temporary:
+        snapshot = Path(temporary) / "source"
+        snapshot.mkdir()
+        for relative in PACKAGE_SOURCE_PATHS:
+            source = ROOT / relative
+            destination = snapshot / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            if source.is_dir():
+                shutil.copytree(source, destination, symlinks=True)
+            else:
+                shutil.copy2(source, destination)
+        environment = os.environ.copy()
+        environment.update(
+            {
+                "GIT_AUTHOR_NAME": "AI_ONBOARD package snapshot",
+                "GIT_AUTHOR_EMAIL": NOREPLY_EMAIL,
+                "GIT_COMMITTER_NAME": "AI_ONBOARD package snapshot",
+                "GIT_COMMITTER_EMAIL": NOREPLY_EMAIL,
+            }
+        )
+        try:
+            for arguments in (
+                ("init", "-q", "-b", "main"),
+                ("config", "commit.gpgsign", "false"),
+                ("add", "."),
+                ("commit", "-q", "-m", "snapshot package under test"),
+            ):
+                subprocess.run(
+                    ["git", "-C", str(snapshot), *arguments],
+                    env=environment,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+        except (OSError, subprocess.CalledProcessError) as exc:
+            raise DeploymentFailure(
+                "cannot create clean Git snapshot for deployment tests"
+            ) from exc
+        yield snapshot
 
 
 def require_file(path: Path) -> None:
@@ -287,8 +352,8 @@ def verify_installed_layout(
         "desired features",
     )
     assert_equal(lock.get("package_version"), package_version, "locked version")
-    if not lock.get("source_revision"):
-        raise DeploymentFailure("lockfile has no source revision")
+    if not re.fullmatch(r"[0-9a-f]{40}", str(lock.get("source_revision", ""))):
+        raise DeploymentFailure("lockfile has no immutable Git source revision")
 
     skills_root, agents_root, command_path = installed_paths(target, harness)
     actual_skills = {
@@ -319,6 +384,7 @@ def verify_installed_layout(
 def verify_lifecycle(
     target: Path,
     *,
+    source: Path,
     environment: dict[str, str],
     verbose: bool,
 ) -> None:
@@ -327,10 +393,24 @@ def verify_lifecycle(
         sys.executable,
         str(manager),
         "--source",
-        str(ROOT),
+        str(source),
         "--target",
         str(target),
     ]
+    git_check = run_command(
+        [*prefix, "check-git"],
+        environment=environment,
+        verbose=verbose,
+    )
+    if "Git process identity passed" not in git_check.stdout:
+        raise DeploymentFailure(
+            f"unexpected Git identity output:\n{git_check.stdout}"
+        )
+    if "Git history passed" not in git_check.stdout:
+        raise DeploymentFailure(
+            f"unexpected Git history output:\n{git_check.stdout}"
+        )
+
     status = run_command(
         [*prefix, "status"],
         environment=environment,
@@ -417,7 +497,12 @@ def verify_uninstalled_layout(
     verify_user_config(config_path, harness, installed=False)
 
 
-def test_deployment(harness: str, *, verbose: bool) -> None:
+def test_deployment(
+    harness: str,
+    *,
+    source: Path,
+    verbose: bool,
+) -> None:
     manifest = read_json(MANIFEST)
     profiles = sorted(str(name) for name in manifest.get("profiles", {}))
     package_version = str(manifest.get("version", ""))
@@ -435,13 +520,48 @@ def test_deployment(harness: str, *, verbose: bool) -> None:
             encoding="utf-8",
         )
         config_path = seed_user_config(target, harness)
+        run_command(
+            ["git", "-C", str(target), "init", "-q", "-b", "main"],
+            environment=environment,
+            verbose=verbose,
+        )
+        run_command(
+            ["git", "-C", str(target), "config", "commit.gpgsign", "false"],
+            environment=environment,
+            verbose=verbose,
+        )
+        run_command(
+            [
+                "git",
+                "-C",
+                str(target),
+                "add",
+                "AGENTS.md",
+                config_path.relative_to(target).as_posix(),
+            ],
+            environment=environment,
+            verbose=verbose,
+        )
+        run_command(
+            [
+                "git",
+                "-C",
+                str(target),
+                "commit",
+                "-q",
+                "-m",
+                "seed deployment fixture",
+            ],
+            environment=environment,
+            verbose=verbose,
+        )
 
         run_command(
             [
                 sys.executable,
                 str(MANAGER),
                 "--source",
-                str(ROOT),
+                str(source),
                 "--target",
                 str(target),
                 "install",
@@ -467,6 +587,7 @@ def test_deployment(harness: str, *, verbose: bool) -> None:
         verify_user_config(config_path, harness, installed=True)
         verify_lifecycle(
             target,
+            source=source,
             environment=environment,
             verbose=verbose,
         )
@@ -515,12 +636,17 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     harnesses = args.harness or list(SUPPORTED_HARNESSES)
-    for harness in harnesses:
-        try:
-            test_deployment(harness, verbose=args.verbose)
-        except DeploymentFailure as exc:
-            print(f"FAIL {harness}: {exc}", file=sys.stderr)
-            return 1
+    with deployment_source() as source:
+        for harness in harnesses:
+            try:
+                test_deployment(
+                    harness,
+                    source=source,
+                    verbose=args.verbose,
+                )
+            except DeploymentFailure as exc:
+                print(f"FAIL {harness}: {exc}", file=sys.stderr)
+                return 1
     print(f"Deployment smoke tests passed: {', '.join(harnesses)}")
     return 0
 
