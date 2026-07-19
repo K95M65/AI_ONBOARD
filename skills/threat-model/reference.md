@@ -47,3 +47,14 @@ Number each boundary crossing; those are where most real threats live.
 
 Keep it proportionate: a login feature warrants a page, not a treatise. The value is naming the boundary
 crossings and the assets — the table falls out of that.
+
+## Priority rubric
+
+Rate each threat using likelihood × impact:
+
+- **Critical:** likely exploitation with severe impact; fix before release.
+- **High:** a credible path to significant impact.
+- **Medium:** limited impact or a hard precondition.
+- **Low:** minor impact, unlikely conditions, or defense-in-depth.
+
+Label uncertainty explicitly and keep unconfirmed threats below Critical.

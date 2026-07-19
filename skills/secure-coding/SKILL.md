@@ -27,7 +27,7 @@ secrets, or cryptography.
 
 Walk [`reference.md`](reference.md): injection, authz/IDOR, crypto, error handling & logging,
 deserialization, and dependencies. For the two biggest areas use the focused skills —
-[`input-sanitization`](../input-sanitization/) and [`identity-management`](../identity-management/).
+`input-sanitization` and `identity-management`.
 
 ## Verify
 

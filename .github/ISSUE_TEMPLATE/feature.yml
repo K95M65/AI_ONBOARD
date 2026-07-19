@@ -1,0 +1,25 @@
+name: Skill or feature idea
+description: Propose a portable skill, harness capability, lifecycle improvement, or public-site change.
+title: "idea: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Describe the recurring user outcome, not only the proposed implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: portability
+    attributes:
+      label: Portability and scope
+      description: Explain which harnesses, profiles, or project types need it and what should stay user-level.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification contract
+      description: How should an isolated deployment or regression test prove the idea works?

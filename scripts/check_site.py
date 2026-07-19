@@ -12,6 +12,7 @@ from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "site"
+SITE_BASE_PATH = "/AI_ONBOARD/"
 REQUIRED_IDS = {"main", "problem", "lifecycle", "router", "catalog", "result"}
 
 
@@ -55,6 +56,10 @@ def local_target(source: Path, reference: str) -> Path | None:
     path = unquote(parsed.path)
     if not path:
         return source
+    if path == SITE_BASE_PATH.rstrip("/"):
+        path = SITE_BASE_PATH
+    if path.startswith(SITE_BASE_PATH):
+        return SITE / path.removeprefix(SITE_BASE_PATH)
     if path.startswith("/"):
         return SITE / path.removeprefix("/")
     return source.parent / path

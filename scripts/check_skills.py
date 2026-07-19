@@ -58,14 +58,33 @@ def description_tokens(description: str) -> set[str]:
     return set(re.findall(r"[a-z0-9]+", description.lower())) - STOP_WORDS
 
 
+def containing_skill(path: Path) -> Path | None:
+    current = path.parent
+    while current != SKILLS:
+        if (current / "SKILL.md").is_file():
+            return current
+        current = current.parent
+    return None
+
+
 def validate_links(path: Path) -> list[str]:
     errors: list[str] = []
+    skill_root = containing_skill(path)
     for target in LINK_PATTERN.findall(path.read_text(encoding="utf-8")):
         target = target.strip()
         if target.startswith(("http://", "https://", "mailto:", "#")):
             continue
         relative = unquote(target.split("#", 1)[0])
-        if relative and not (path.parent / relative).resolve().exists():
+        resolved = (path.parent / relative).resolve()
+        if (
+            skill_root is not None
+            and relative
+            and skill_root.resolve() not in (resolved, *resolved.parents)
+        ):
+            errors.append(
+                f"{path.relative_to(ROOT)}: non-portable package link {target!r}"
+            )
+        elif relative and not resolved.exists():
             errors.append(
                 f"{path.relative_to(ROOT)}: broken local link {target!r}"
             )

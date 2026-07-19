@@ -1151,6 +1151,53 @@ class LifecycleManagerTests(unittest.TestCase):
         ):
             MANAGER_MODULE.safe_extract(archive, destination)
 
+    def test_safe_extract_bounds_member_enumeration_without_getmembers(self) -> None:
+        destination = self.target / "extracted"
+        destination.mkdir()
+
+        class OversizedBundle:
+            def __init__(self) -> None:
+                self.iterated = 0
+                self.extracted = False
+
+            def __enter__(self) -> "OversizedBundle":
+                return self
+
+            def __exit__(self, *_args: object) -> None:
+                return None
+
+            def __iter__(self):
+                for index in range(MANAGER_MODULE.MAX_ARCHIVE_MEMBERS + 1):
+                    self.iterated += 1
+                    yield tarfile.TarInfo(f"repo/{index}")
+
+            def getmembers(self) -> list[tarfile.TarInfo]:
+                raise AssertionError("safe_extract must not materialize every member")
+
+            def extractall(self, *_args: object, **_kwargs: object) -> None:
+                self.extracted = True
+
+        bundle = OversizedBundle()
+        with mock.patch.object(
+            MANAGER_MODULE.tarfile,
+            "open",
+            return_value=bundle,
+        ):
+            with self.assertRaisesRegex(
+                MANAGER_MODULE.LifecycleError,
+                "too many entries",
+            ):
+                MANAGER_MODULE.safe_extract(
+                    self.target / "oversized.tar.gz",
+                    destination,
+                )
+
+        self.assertEqual(
+            bundle.iterated,
+            MANAGER_MODULE.MAX_ARCHIVE_MEMBERS + 1,
+        )
+        self.assertFalse(bundle.extracted)
+
     def test_read_only_command_does_not_create_missing_target(self) -> None:
         missing = self.target.parent / "missing-project"
         result = subprocess.run(

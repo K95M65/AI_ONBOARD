@@ -161,9 +161,10 @@ installed Git identity guard, sync and uninstall previews, and actual cleanup. N
 credential, or model API call is required. CI runs the same contract as a three-harness matrix on every
 push and pull request.
 
-The initial package channel is `edge`, which resolves the latest commit on `main`. Change
-`source.channel` in `ai-onboard.json` to `stable` after the repository publishes versioned GitHub Releases,
-or set it to a tag or commit for a deliberate pin.
+The default package channel is `stable`, which resolves the latest versioned GitHub Release. Use `edge`
+only when a project intentionally tracks the latest commit on `main`, or set `source.channel` to a tag or
+commit for a deliberate pin. Changing channels is explicit desired-state maintenance; upgrades never
+change it silently.
 
 Public repositories update with Python alone. For a private source repository, authenticate the GitHub CLI
 with access to that repository or set `GH_TOKEN`/`GITHUB_TOKEN`; the manager uses those credentials without

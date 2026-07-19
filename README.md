@@ -116,6 +116,10 @@ The manager preserves divergent user files, merges only owned configuration keys
 and removes only unchanged managed content. See [`docs/install-management.md`](docs/install-management.md)
 for adoption, locked sync, upgrades, cleanup, recovery, and uninstall behavior.
 
+New installs use the versioned `stable` release channel. Projects that deliberately want unreleased
+`main` commits can opt into `edge`; upgrades never switch a project's channel or overwrite divergent local
+content silently.
+
 Add `--notifications` to the install command to opt into `/ai-onboard-update` for Claude Code and
 OpenCode, a Codex compatibility prompt,
 and a weekly GitHub Actions check. The portable `check-ai-onboard-updates` skill remains the preferred
@@ -195,6 +199,14 @@ that supports Pages for private repositories. For supported private repositories
 Actions as the publishing source and set the repository variable `ENABLE_PRIVATE_PAGES=true`; otherwise CI
 reports a deployment skip without treating successful website validation as a failure.
 
+## Releases, contributions, and security
+
+- Download or inspect the latest versioned build from [GitHub Releases](https://github.com/K95M65/AI_ONBOARD/releases).
+- Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before proposing a skill, agent, installer, or site change.
+- Report vulnerabilities privately using the process in [`SECURITY.md`](SECURITY.md); do not open a public
+  security issue.
+- User-visible changes are summarized in [`CHANGELOG.md`](CHANGELOG.md).
+
 ## Scope
 
 This repo covers **project-level onboarding files** (what an agent should know when it opens your repo),
@@ -211,6 +223,6 @@ The vendored Cloudflare skills in [`skills/cloudflare/`](skills/cloudflare/) are
 
 ---
 
-*Status: active. Core docs, multi-harness setup, the behavioral and delegation model, six reference
-subagents, the portable skills library, two worked examples, and the generated interactive project map are
-in place.*
+*Status: active and publicly released. Core docs, multi-harness setup, the behavioral and delegation model,
+six reference subagents, the portable skills library, two worked examples, and the generated interactive
+project map are in place.*

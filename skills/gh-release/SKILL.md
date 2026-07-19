@@ -7,7 +7,7 @@ description: Cut a GitHub release with the gh CLI, using changelog or auto-gener
 
 ## Steps
 
-1. Assemble notes with the [`changelog`](../changelog/) skill (save to `RELEASE-NOTES.md`), or let GitHub
+1. Assemble notes with the `changelog` skill (save to `RELEASE-NOTES.md`), or let GitHub
    generate them.
 2. Create the tag + release:
    ```bash

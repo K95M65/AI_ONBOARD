@@ -57,19 +57,25 @@ release check, and non-mutating upgrade preview.
 
 ### MCP servers
 
+Put credential-bearing server definitions in the global
+`~/.config/opencode/opencode.json`, not a committed project file. OpenCode expands `{env:NAME}` from the
+launch environment:
+
 ```json
 {
   "mcp": {
     "github": {
       "type": "local",
-      "command": ["npx", "-y", "@modelcontextprotocol/server-github"],
-      "environment": { "GITHUB_TOKEN": "..." }
+      "command": ["/absolute/path/to/reviewed/github-mcp-server"],
+      "environment": { "GITHUB_TOKEN": "{env:GITHUB_TOKEN}" }
     }
   }
 }
 ```
 
-Remote MCP servers use `"type": "remote"` with a `url`.
+Use a reviewed, version-pinned executable; avoid unpinned `npx -y` launchers for credential-bearing
+servers. Never put a literal token in global or project JSON. Remote MCP servers use `"type": "remote"`
+with a `url`; prefer their OAuth flow when available.
 
 ## Realizing subagents & skills
 

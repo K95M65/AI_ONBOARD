@@ -25,8 +25,7 @@ your own code and for an unfamiliar external/client codebase.
 4. **Confirm.** Trace each candidate finding to a concrete exploit path in the code. Mark suspicions you
    can't trace as "plausible, needs confirmation" — don't assert what you haven't traced.
 5. **Report.** One finding per issue, highest severity first, using the severity rubric and report format in
-   [`../../docs/security-audit.md`](../../docs/security-audit.md): severity, `file:line`, exploit scenario,
-   fix.
+   [`reference.md`](reference.md): severity, `file:line`, exploit scenario, fix.
 
 ## Rules
 

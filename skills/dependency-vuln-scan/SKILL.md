@@ -22,8 +22,8 @@ an unfamiliar repo's supply chain.
    actually used.
 3. For each actionable item note: advisory id, affected package@version, fixed version, and whether the
    upgrade is breaking.
-4. Fold results into the audit report (severity per [`../../docs/security-audit.md`](../../docs/security-audit.md))
-   or a remediation list.
+4. Fold results into an audit report or remediation list. Prioritize using impact × exploitability:
+   reachable severe impact first, then limited-impact or hard-precondition findings.
 
 ## Notes
 

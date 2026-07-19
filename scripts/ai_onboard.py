@@ -670,15 +670,16 @@ def github_json(api_path: str) -> dict[str, Any]:
 def safe_extract(archive: Path, destination: Path) -> None:
     destination_resolved = destination.resolve()
     with tarfile.open(archive, "r:gz") as bundle:
-        members = bundle.getmembers()
-        if len(members) > MAX_ARCHIVE_MEMBERS:
-            raise LifecycleError("source archive contains too many entries")
-        if any(member.size < 0 for member in members):
-            raise LifecycleError("source archive contains invalid size metadata")
-        if sum(member.size for member in members) > MAX_EXTRACTED_BYTES:
-            raise LifecycleError("source archive expands beyond the safety limit")
         safe_members: list[tarfile.TarInfo] = []
-        for member in members:
+        total_size = 0
+        for member_index, member in enumerate(bundle, start=1):
+            if member_index > MAX_ARCHIVE_MEMBERS:
+                raise LifecycleError("source archive contains too many entries")
+            if member.size < 0:
+                raise LifecycleError("source archive contains invalid size metadata")
+            total_size += member.size
+            if total_size > MAX_EXTRACTED_BYTES:
+                raise LifecycleError("source archive expands beyond the safety limit")
             candidate = (destination / member.name).resolve()
             if (
                 candidate != destination_resolved

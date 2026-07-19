@@ -21,8 +21,8 @@ first step of an audit on an unfamiliar system.
    availability.
 3. **Apply STRIDE** to each element and each boundary crossing — see [`reference.md`](reference.md) for the
    per-category prompts.
-4. **Rate & prioritize.** For each threat: likelihood × impact (reuse the severity rubric in
-   [`../../docs/security-audit.md`](../../docs/security-audit.md)). Focus on boundary crossings.
+4. **Rate & prioritize.** For each threat: likelihood × impact using the packaged rubric in
+   [`reference.md`](reference.md). Focus on boundary crossings.
 5. **Assign mitigations.** For each meaningful threat, name the control (authz check, validation, rate limit,
    encryption) and where it lives. Gaps become audit targets or backlog items.
 

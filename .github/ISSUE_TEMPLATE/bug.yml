@@ -1,0 +1,40 @@
+name: Bug report
+description: Report a reproducible AI_ONBOARD package, installer, validation, or website problem.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, private data, or unpatched vulnerability details.
+  - type: input
+    id: version
+    attributes:
+      label: AI_ONBOARD version
+      placeholder: v0.2.0 or commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: harness
+    attributes:
+      label: Harness
+      options:
+        - Claude Code
+        - Codex
+        - OpenCode
+        - Harness-independent
+        - Website
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: List the smallest safe steps, expected result, and actual result.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Include relevant doctor/check output after removing private paths, tokens, and personal data.

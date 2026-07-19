@@ -113,6 +113,8 @@ def validate_opencode(path: Path, errors: list[str]) -> None:
     permission = data.get("permission", {})
     if permission.get("edit") != "ask":
         errors.append(f"{path}: edit permission must be 'ask'")
+    if permission.get("bash") != "ask":
+        errors.append(f"{path}: bash permission must be 'ask'")
     if permission.get("external_directory") != "deny":
         errors.append(f"{path}: external_directory permission must be 'deny'")
     skill_permissions = permission.get("skill", {})

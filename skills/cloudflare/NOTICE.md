@@ -11,9 +11,13 @@ AI_ONBOARD**.
 
 Per Apache-2.0 §4(b), changes are stated here:
 
-- The eight skill folders below were **copied verbatim** (no content edits) and **relocated** from the
-  upstream `skills/<name>/` into `skills/cloudflare/<name>/` for organization within this library.
-- No other files were altered. This NOTICE, the `README.md`, and `.upstream-commit` were added.
+- The eight skill folders below were relocated from upstream `skills/<name>/` into
+  `skills/cloudflare/<name>/` for organization within this library.
+- `turnstile-spin` was security-adapted so API tokens are never requested in chat and widget secrets are
+  written only to caller-selected, new mode-`0600` transfer files rather than stdout. Its bundled creation
+  and recovery instructions were updated to match.
+- The other seven skill folders were copied verbatim. This NOTICE, the `README.md`, and
+  `.upstream-commit` were added.
 
 ## Vendored skills (curated subset)
 

@@ -97,14 +97,19 @@ write to a user's Codex home automatically.
 
 ### MCP servers
 
-Declare tools/data sources under `[mcp_servers]`:
+Keep credential-bearing MCP definitions in the user-level `~/.codex/config.toml`, not a committed project
+file. Use an absolute path to a reviewed, version-pinned server executable:
 
 ```toml
+# ~/.codex/config.toml
 [mcp_servers.github]
-command = "npx"
-args = ["-y", "@modelcontextprotocol/server-github"]
-env = { GITHUB_TOKEN = "..." }
+command = "/absolute/path/to/reviewed/github-mcp-server"
 ```
+
+Load `GITHUB_TOKEN` from the launching shell or an approved user-level secret store so the MCP child
+process inherits it. Never put a literal token in `~/.codex/config.toml`, a project
+`.codex/config.toml`, `AGENTS.md`, or a command argument. Avoid unpinned `npx -y` launchers for
+credential-bearing servers.
 
 ## Realizing subagents & layer profiles
 

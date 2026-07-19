@@ -1,0 +1,8 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Cloudflare documentation uses this explicit fake key as an anti-pattern."
+regexes = [
+  '''sk-live-abc123\.\.\.''',
+]

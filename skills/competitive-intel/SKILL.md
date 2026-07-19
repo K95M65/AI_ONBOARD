@@ -5,9 +5,9 @@ description: Run an ethical competitive-intelligence cycle — scope a question,
 
 # Competitive intelligence
 
-The umbrella methodology. It orchestrates the specialists: [`market-research`](../market-research/) to
-gather, [`analytical-frameworks`](../analytical-frameworks/) to analyze, and
-[`data-storytelling`](../data-storytelling/) + [`dataviz`](../dataviz/) to communicate — all under an ethics
+The umbrella methodology. It orchestrates the specialists: `market-research` to
+gather, `analytical-frameworks` to analyze, and
+`data-storytelling` + `dataviz` to communicate — all under an ethics
 constraint throughout.
 
 ## When to use

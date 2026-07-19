@@ -5,8 +5,7 @@ description: Gather and structure market and competitor data — market sizing (
 
 # Market research
 
-The evidence-gathering leg of [`competitive-intel`](../competitive-intel/). Feeds
-[`analytical-frameworks`](../analytical-frameworks/).
+The evidence-gathering leg of `competitive-intel`. Feeds `analytical-frameworks`.
 
 ## Market sizing: TAM / SAM / SOM
 

@@ -6,7 +6,7 @@ description: Turn analysis into a clear, persuasive narrative for a decision-mak
 # Data storytelling
 
 Analysis that isn't communicated doesn't change a decision. The last mile of
-[`competitive-intel`](../competitive-intel/); pairs with [`dataviz`](../dataviz/) for the visuals.
+`competitive-intel`; pairs with `dataviz` for the visuals.
 
 ## Principles
 

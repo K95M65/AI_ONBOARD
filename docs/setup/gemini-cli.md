@@ -32,23 +32,24 @@ Like the others, Gemini layers context files from global → project → subdire
 
 Check what's actually loaded in a session with the `/memory show` command; refresh with `/memory refresh`.
 
-## Power features (`.gemini/settings.json`)
+## Power features (`~/.gemini/settings.json`)
 
-Tool-specific config — context filename, MCP servers, tool allow/deny, telemetry — lives here, not in the
-context file.
+Credential-bearing MCP definitions belong in the user settings file, not committed project settings.
+Gemini CLI expands `$NAME` from the launch environment:
 
 ```json
 {
-  "contextFileName": "AGENTS.md",
   "mcpServers": {
     "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": { "GITHUB_TOKEN": "..." }
+      "command": "/absolute/path/to/reviewed/github-mcp-server",
+      "env": { "GITHUB_TOKEN": "$GITHUB_TOKEN" }
     }
   }
 }
 ```
+
+Use a reviewed, version-pinned executable; avoid unpinned `npx -y` launchers for credential-bearing
+servers. Never put a literal token in `settings.json`, `GEMINI.md`, or a command argument.
 
 ## Recommended baseline
 

@@ -3,11 +3,11 @@
   "package": "ai-onboard",
   "version": "0.2.0",
   "repository": "K95M65/AI_ONBOARD",
-  "default_channel": "edge",
+  "default_channel": "stable",
   "release": {
-    "classification": "feature",
-    "summary": "Managed installs, structured update notifications, GitHub no-reply identity guards, hardened source archives, and full Claude, Codex, and OpenCode deployment smoke tests.",
-    "notes_url": "https://github.com/K95M65/AI_ONBOARD/releases"
+    "classification": "security",
+    "summary": "Initial public stable release with hardened archives and secret handling, portable packaged links, no-reply Git identity guards, and full Claude, Codex, and OpenCode deployment smoke tests.",
+    "notes_url": "https://github.com/K95M65/AI_ONBOARD/releases/tag/v0.2.0"
   },
   "profiles": {
     "core": {

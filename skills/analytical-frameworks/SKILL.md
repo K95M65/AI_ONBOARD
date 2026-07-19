@@ -6,7 +6,7 @@ description: Apply structured business-analysis frameworks (SWOT, Porter's Five 
 # Analytical frameworks
 
 Frameworks are **lenses, not answers** — they organize evidence so implications surface. Pick the one that
-fits the question; don't force all of them. The analysis leg of [`competitive-intel`](../competitive-intel/).
+fits the question; don't force all of them. The analysis leg of `competitive-intel`.
 
 ## Which framework for which question
 

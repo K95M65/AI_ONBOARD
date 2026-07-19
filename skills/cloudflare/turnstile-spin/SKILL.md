@@ -35,15 +35,12 @@ The user pasted the prompt. You are in a multi-step dialog. Detect what you can,
 
 1. **Brief acknowledge.** One sentence: "I'll run Turnstile setup end to end. That's: check auth, scan the codebase, create the widget, embed it on the right forms, wire server-side siteverify, validate. Proceed?" **[wait for user]** Do NOT present a plan yet. Auth + scan come first.
 
-2. **CLI check.** Spin's helper scripts use `curl` against `api.cloudflare.com` and `npx wrangler whoami` for account enumeration. Widget creation in Step 8 prefers `wrangler turnstile widget create` when the subcommand is available (Wrangler 4.109+), falling back to the bundled curl script otherwise. No persistent CLI install is required.
+2. **CLI check.** Spin's helper scripts use `curl` against `api.cloudflare.com`. No persistent CLI install
+   is required.
 
 3. **Auth + scope probe (FIRST irreversible action).** Run `scripts/auth-probe.sh`. Branch on `status`:
    - `ok`: continue to Step 4. The script already picked the account (single-account token, or one matching `$CLOUDFLARE_ACCOUNT_ID`).
-   - `missing_token` or `missing_scope`: ask the user to create a token at https://dash.cloudflare.com/profile/api-tokens → Custom token → permission `Account.Turnstile:Edit` → include the target account in Account Resources. **Do NOT direct them to `wrangler login`** unless wrangler's OAuth scope includes `Account.Turnstile:Edit` (varies by wrangler version). Offer three ways to hand the token over, cleanest first:
-     1. **Export + relaunch** (token never enters chat): `export CLOUDFLARE_API_TOKEN=<token>` then restart the agent from that terminal.
-     2. **Save to file** (token in file with user-only perms, not in chat): `umask 077 && printf '%s' '<token>' > ~/.cf-turnstile-token`, then read with `TOKEN=$(cat ~/.cf-turnstile-token)`.
-     3. **Paste in chat** (fastest, but token lands in conversation log; user should rotate it after if the log is ever shared).
-     If the user picks option 3 (paste in chat), you can use the wait to run Steps 5, 6, 7 (Domain, Codebase scan, Insertion plan). Options 1 and 2 will restart your session, so do not pre-fetch state in those cases. When auth is established, re-run `auth-probe.sh`, then continue to Step 8.
+   - `missing_token` or `missing_scope`: ask the user to create a token at https://dash.cloudflare.com/profile/api-tokens → Custom token → permission `Account.Turnstile:Edit` → include the target account in Account Resources. **Never ask the user to paste the token in chat.** Have them export `CLOUDFLARE_API_TOKEN` in the launching shell or load it from an approved user-level secret store, then restart the agent from that shell. When auth is established, re-run `auth-probe.sh`, then continue to Step 8.
    - `multiple_accounts`: the token covers more than one account and `$CLOUDFLARE_ACCOUNT_ID` is unset. Present the numbered `accounts` list. **[wait for user]** Then export `CLOUDFLARE_ACCOUNT_ID=<chosen>` and re-run `auth-probe.sh`.
    - `account_mismatch`: `$CLOUDFLARE_ACCOUNT_ID` is set but isn't one of the token's accounts. Show the `accounts` list and ask the user to either `unset CLOUDFLARE_ACCOUNT_ID` or set it to one of those IDs.
 
@@ -58,14 +55,22 @@ The user pasted the prompt. You are in a multi-step dialog. Detect what you can,
 
 7. **Insertion plan.** Show the candidate list with `[recommended]` / `[skip by default]` markers; ask the user to confirm (numbers, "all", "recommended", or a list). **[wait for user]** If an existing CAPTCHA was detected, present a migration plan instead (see "Migrating from another CAPTCHA").
 
-8. **Widget creation.** Prefer the wrangler CLI when its `turnstile widget` subcommand is available:
+8. **Widget creation.** Create a private temporary directory and have the bundled API helper write the
+   secret to a new mode-`0600` transfer file:
 
    ```sh
-   npx wrangler turnstile widget create "<name>" \
-     --domain <d1> --domain <d2> ... --mode managed --json
+   secret_dir="$(mktemp -d)"
+   chmod 700 "$secret_dir"
+   scripts/widget-create.sh \
+     --account-id "<id>" \
+     --name "<name>" \
+     --domains "<d1>,<d2>" \
+     --mode managed \
+     --secret-file "$secret_dir/turnstile-secret"
    ```
 
-   Parse `sitekey` and `secret` from stdout JSON. If wrangler is missing, older than the turnstile subcommand (`unknown command`), or otherwise fails, fall back to `scripts/widget-create.sh --account-id <id> --name <name> --domains <list> --mode managed`, which uses `curl` against the Cloudflare API directly. Report the sitekey. Capture the secret into a shell variable `WIDGET_SECRET`; never write it to disk except into the user's own env / secret store in Step 9.
+   Parse the sitekey from stdout JSON. The secret must never appear in stdout, stderr, chat, a command
+   argument, or a shell variable. The helper refuses to overwrite an existing destination.
 
 9. **Wire the integration.** State the contract: "I'll embed the widget on each chosen form and add a canonical siteverify call inside your existing submit handler, gated on `success === true`. The handler logic stays the same. The secret lives in your env as `TURNSTILE_SECRET`." Ask "yes" / "show". **[wait for user]** If "show", print unified diffs and ask again. Do NOT propose alternate behavior (mail delivery, custom backends).
 
@@ -88,7 +93,20 @@ The user pasted the prompt. You are in a multi-step dialog. Detect what you can,
    // existing handler logic runs here, unchanged
    ```
 
-   Write the secret into the user's secret store (`.env` for Node/Rails/Python, `wrangler secret put TURNSTILE_SECRET` for Workers, the platform's secret manager for Vercel / Fly / Render / etc.). Never inline.
+   Transfer the secret from the restricted file into the user's approved platform secret manager
+   (`wrangler secret put TURNSTILE_SECRET` for Workers, or the secret manager for Vercel / Fly / Render /
+   etc.) without printing it.
+
+   Use a local `.env`-style file only after all of these checks pass for the exact destination:
+
+   ```sh
+   git check-ignore -q -- .env &&
+     ! git ls-files --error-unmatch -- .env >/dev/null 2>&1
+   ```
+
+   If the file is tracked, not ignored, or the project is not a Git repository, stop and use a platform or
+   user-level secret store. Before writing, apply `umask 077` and mode `0600`. Delete the temporary transfer
+   file and directory immediately after a successful transfer. Never inline the value.
 
 10. **Validation.** Run `scripts/validate.sh`. Report each check as it passes. If any fails, surface the error and stop. **[wait for user if anything fails]**
 
@@ -98,7 +116,9 @@ The user pasted the prompt. You are in a multi-step dialog. Detect what you can,
 
 ### Things you must NOT do
 
-- Do not write the Turnstile secret to disk except as part of the user's own env / secret store.
+- Do not expose the Turnstile secret in stdout, stderr, chat, command arguments, or shell variables.
+- A restricted temporary transfer file is allowed only for the bundled helper flow; remove it immediately
+  after storing the secret in the user's approved secret store.
 - Do not skip validation.
 - Do not overwrite files without showing a diff.
 - Do not call siteverify from the browser. Always: browser → user's backend → siteverify.
@@ -124,9 +144,14 @@ When the user has Cloudflare dashboard access, the in-dashboard **Fix with Spin*
 If the user tells you they already have a Turnstile widget set up and want to wire siteverify to it without rotating the sitekey (e.g. "I have a sitekey but siteverify never worked", "set up Spin against my existing widget `<sitekey>`"):
 
 1. Skip Step 8 (widget creation). The sitekey already exists; get it from the user.
-2. Fetch the widget metadata via `scripts/fetch-secret.sh --account-id <id> --sitekey <key>`. Branch on `status`:
-   - `ok`: read `secret`, `clearance_level`, and `domains` from the response. Confirm `domains` includes the user's production hostname; if not, surface the gap before proceeding.
-   - `missing_read_scope`: tell the user to add `Account.Turnstile:Read` to the token, or fall back to asking them to paste the secret. In the paste path, you do not have `clearance_level` or `domains`; ask the user to confirm both.
+2. Create a private temporary directory, then fetch the widget metadata with
+   `scripts/fetch-secret.sh --account-id <id> --sitekey <key> --secret-file <restricted-new-path>`.
+   Branch on `status`:
+   - `ok`: read `clearance_level` and `domains` from stdout. The secret is available only in the restricted
+     transfer file. Confirm `domains` includes the user's production hostname; if not, surface the gap
+     before proceeding.
+   - `missing_read_scope`: tell the user to add `Account.Turnstile:Read` or retrieve the secret through the
+     Cloudflare dashboard into their approved secret store. Never ask them to paste it in chat.
 3. Check `clearance_level` from the response (or the user's answer):
    - `no_clearance`: standard wire-up (Step 9).
    - anything else: ask whether they want siteverify on top of pre-clearance, or exit per the scope boundary.
@@ -174,7 +199,7 @@ Edge cases to surface to the user:
 
 | Situation                                      | Action                                                                                                                                                                                                                                |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npx wrangler whoami` fails                    | The auth probe needs wrangler to enumerate accounts. Install path: `npm install --save-dev wrangler` (Node project) or `npm install -g wrangler` (other). If install is blocked, fall back to `curl https://api.cloudflare.com/client/v4/accounts -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"` and pass the chosen ID via `$CLOUDFLARE_ACCOUNT_ID`. |
+| Account enumeration fails                     | Confirm the token is active and can call `GET https://api.cloudflare.com/client/v4/accounts`; set `$CLOUDFLARE_ACCOUNT_ID` to an account covered by the token and re-run the probe. |
 | Multiple Cloudflare accounts                   | `scripts/auth-probe.sh` returns all accounts; ask the user to choose, export `CLOUDFLARE_ACCOUNT_ID`                                                                                                                                  |
 | Cloudflare Pages project                       | Wire siteverify inside a Pages Function (or the equivalent for your framework). The Pages Plugin at [developers.cloudflare.com/pages/functions/plugins/turnstile](https://developers.cloudflare.com/pages/functions/plugins/turnstile/) is a shortcut. |
 | Cloudflare Workers backend                     | Use the canonical fetch idiom from Step 9 inside the Worker's request handler. `fetch` to `challenges.cloudflare.com` works the same way it does in Node.                                                                             |
@@ -188,5 +213,3 @@ Edge cases to surface to the user:
 Every `cf-turnstile` div this skill writes must include `data-action="turnstile-spin-v2"`. Account-level aggregate telemetry, never per-user. Cloudflare uses it to measure activation. If the user removes the attribute, the integration still works; only the analytics segmentation is lost.
 
 Older widgets stamped `turnstile-spin-v1` (from the V1 agent flow that deployed a managed Worker) still exist in production accounts; preserve that marker if you encounter it on an existing widget you are modifying. Do not retag.
-
-

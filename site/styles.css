@@ -2145,6 +2145,10 @@ h1 {
 }
 
 @media (max-width: 920px) {
+  html {
+    scroll-padding-top: 124px;
+  }
+
   .site-header {
     grid-template-columns: 1fr auto;
     row-gap: 0;
@@ -2152,8 +2156,14 @@ h1 {
     padding-left: 14px;
   }
 
+  .site-header .wordmark {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
   .site-header nav {
     grid-column: 1 / -1;
+    grid-row: 2;
     display: flex;
     width: 100%;
     gap: 20px;
@@ -2161,6 +2171,11 @@ h1 {
     border-top: 1px solid var(--line);
     overflow-x: auto;
     scrollbar-width: none;
+  }
+
+  .site-header .header-action {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .site-header nav::-webkit-scrollbar {

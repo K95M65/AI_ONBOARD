@@ -242,7 +242,9 @@ say "Wiring AI tools in $(pwd) to AGENTS.md"
 #     Claude-only notes and works cross-platform, per Anthropic's guidance) -----------
 say
 say "Claude Code (CLAUDE.md):"
-if [ -f CLAUDE.md ] && grep -qE '^\s*@AGENTS\.md\s*$' CLAUDE.md; then
+if [ -L CLAUDE.md ]; then
+  say "  ! CLAUDE.md is a symlink — preserving it"
+elif [ -f CLAUDE.md ] && grep -qE '^\s*@AGENTS\.md\s*$' CLAUDE.md; then
   skip "CLAUDE.md"
 elif [ -f CLAUDE.md ]; then
   backup CLAUDE.md && {

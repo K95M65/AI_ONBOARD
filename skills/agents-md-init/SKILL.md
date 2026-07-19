@@ -29,7 +29,7 @@ an AGENTS.md / agent instructions" for the repo.
 2. **Skim the structure** — list top-level dirs and note what each holds (`src/`, `tests/`, `packages/`…).
    Read the existing `README.md` for setup steps and conventions already documented.
 
-3. **Draft `AGENTS.md`** from the template in this repo's [`../../AGENTS.md`](../../AGENTS.md), filling in:
+3. **Draft the project-root `AGENTS.md`** with these sections:
    - Overview (stack, what it is) — 1–2 sentences.
    - Setup, build, test, lint — use the **exact commands the detector found**.
    - Structure — the real directories.

@@ -12,7 +12,7 @@ Opening or updating a pull request from the command line.
 ## Steps
 
 1. Push the branch: `git push -u origin HEAD`.
-2. Write the body with the [`pr-description`](../pr-description/) skill (save it to `PR.md`).
+2. Write the body with the `pr-description` skill (save it to `PR.md`).
 3. Create the PR:
    ```bash
    gh pr create --base main --title "<title>" --body-file PR.md
